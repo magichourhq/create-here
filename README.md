@@ -14,7 +14,7 @@ Describe an outcome or choose a starter, attach source materials, review the pro
 
 The first successful creation is included without sign-up. A Redis transaction reserves the allowance before submission and consumes it only on success. Terminal failure releases it. An uncertain submission stays reserved and is never submitted again automatically. Reopening the same plan returns the same job. Cookies plus server-side session/IP throttles limit casual guest reuse; clearing cookies can create a new guest identity. Configure the service account's funded allowance before public access.
 
-After the trial, connect a Magic Hour account using its real OAuth flow. Guest results stay available in the same browser workspace; continued paid creation goes to Magic Hour. This MVP has no separate checkout, invented credit prices, or automatic cross-device workspace transfer. Workspace history and guest sessions are retained for 30 days; media availability follows Magic Hour retention, and uploaded source context expires after 24 hours. Keep `SESSION_SECRET` stable, since changing it invalidates browser sessions and stored account-token encryption.
+After the trial, native links open Magic Hour's existing signup or sign-in page in a new tab, then continue to `/create` on Magic Hour. Guest results stay available for preview and download in the original browser workspace. This MVP does not authenticate users on create.here, transfer results into a Magic Hour account, or provide separate checkout or credit pricing. Workspace history and guest sessions are retained for 30 days; media availability follows Magic Hour retention, and uploaded source context expires after 24 hours. Keep `SESSION_SECRET` stable, since changing it invalidates browser sessions.
 
 ## Run
 
@@ -24,13 +24,13 @@ Use Node 24. Set the five required environment variables listed in `.env.example
 node --env-file=.env server.mjs
 ```
 
-The app serves at `http://127.0.0.1:8714`. Without configuration, the UI displays an unavailable state and the API does not pretend to generate content. `PUBLIC_APP_URL` is optional during local development; omit it or use the local origin, so OAuth and same-origin checks use that origin. Never load the production origin value for a local session.
+The app serves at `http://127.0.0.1:8714`. Without configuration, the UI displays an unavailable state and the API does not pretend to generate content. `PUBLIC_APP_URL` is optional during local development; omit it or use the local origin for same-origin checks. Never load the production origin value for a local session.
 
 ## Vercel release
 
 1. Import this repository as a separate project in the intended Magic Hour team. Set Framework Preset to Other, output directory to `public`, and Node to 24. The supplied configuration serves static assets and routes `/api/*` to the server function.
-2. Connect a dedicated Upstash Redis REST database and add the five required secrets separately for the intended environment. Set `PUBLIC_APP_URL` to that environment's exact origin; preview OAuth callbacks need their own origin.
-3. Verify an actual creation, upload, failed-generation allowance recovery, reload, download and OAuth flow before approving production. These require live credentials and have not been proved by an unconfigured preview or syntax checks.
+2. Connect a dedicated Upstash Redis REST database and add the five required secrets separately for the intended environment. Set `PUBLIC_APP_URL` to that environment's exact origin. Magic Hour signup and sign-in use ordinary links and require no OAuth registration or callback allowlist change.
+3. Verify an actual creation, upload, failed-generation allowance recovery, reload, download and native signup/sign-in handoff before approving production. Generation checks require live credentials and have not been proved by an unconfigured preview or syntax checks.
 4. After release approval, add `create.here` under project Domains. Enter Vercel's exact supplied records at the authoritative DNS provider, then verify DNS and HTTPS. Keep registration at Brandsight.
 
-No production deployment, DNS mutation, paid generation, account connection or storage provisioning is implied by committing this source. No tests, fixtures or mock services are included.
+No production deployment, DNS mutation, paid generation, signup or storage provisioning is implied by committing this source. No tests, fixtures or mock services are included.
