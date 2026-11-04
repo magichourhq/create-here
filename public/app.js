@@ -610,7 +610,6 @@ function syncSessionFolder(){
   $('#session-nav').hidden=generationItems.length===0;
   $('#session-name').textContent=name;$('#session-button').dataset.tip=name;
   $('#session-button').setAttribute('aria-label',`Open workspace: ${name}`);
-  syncWorkspaceMore();
   if(active)$('#session-button').setAttribute('aria-current','page');else $('#session-button').removeAttribute('aria-current');
 }
 $('#session-button').addEventListener('click',()=>{
@@ -628,7 +627,6 @@ function stopGeneration(){
 }
 form.addEventListener('submit',prepareCreation);
 function goHome(){
-  closeProfileMenu({immediate:true});
   closeTemplates();
   closeGenerationViewer(true);
   if(expandedStack)closeStackFocus();
@@ -818,14 +816,13 @@ new ResizeObserver(([entry])=>{
 }).observe(form);
 
 // Open the auth UI only from the explicitly designated account/navigation controls.
-const authDialog=$('#auth-dialog');let authMotion=null,authReturnFocus=null,authClosing=false,signedIn=false;
+const authDialog=$('#auth-dialog');let authMotion=null,authReturnFocus=null,authClosing=false;
 function openAuth(trigger){
-  if(signedIn){window.open('https://magichour.ai/create','_blank','noopener');return;}
   if(authDialog.open)return;
   authReturnFocus=mobileLayout.matches&&sidebar.contains(trigger)?$('#mobile-menu-button'):trigger;
   if(mobileLayout.matches&&sidebar.classList.contains('expanded'))setSidebar(false,{focus:false});
   hideTooltip(true);clearCanvasGesture();
-  $('#auth-feedback').hidden=true;authClosing=false;authDialog.classList.remove('is-closing');
+  authClosing=false;authDialog.classList.remove('is-closing');
   document.documentElement.classList.add('auth-modal-open');authDialog.showModal();
   if(!reduceMotion)authMotion=authDialog.animate([{opacity:0,transform:`translateY(${mobileLayout.matches?28:18}px) scale(.985)`},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:360,easing:'cubic-bezier(.22,1,.36,1)'});
 }
@@ -842,62 +839,6 @@ let authBackdropDown=false;
 authDialog.addEventListener('pointerdown',e=>{const r=authDialog.getBoundingClientRect();authBackdropDown=e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom});
 authDialog.addEventListener('click',e=>{const r=authDialog.getBoundingClientRect();if(authBackdropDown&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))closeAuth();authBackdropDown=false});
 authDialog.addEventListener('keydown',e=>e.stopPropagation());
-const CREDIT_ALLOWANCE=1;
-let creditBalance=1;
-function updateCreditBalance(){syncProfileMenu()}
-function connectAccount(){window.location.assign('/api/auth/start')}
-$('#auth-connect').addEventListener('click',connectAccount);
-// Session actions stay separate from canvas pan/zoom and generation controls.
-let workspacePinned=false;
-const moreRoot=$('#workspace-more'),moreButton=$('#workspace-more-button'),moreMenu=$('#workspace-more-menu'),renameInput=$('#workspace-rename');
-function syncWorkspaceMore(){
-  const visible=signedIn&&generationItems.length>0&&!showingHome;
-  $('#workspace-more').hidden=!visible;
-  if(!visible)closeWorkspaceMore();
-}
-function closeWorkspaceMore(focus=false){
-  $('#workspace-more-menu').hidden=true;$('#workspace-more-button').setAttribute('aria-expanded','false');
-  if(focus)$('#workspace-more-button').focus({preventScroll:true});
-}
-function openWorkspaceMore(){
-  hideTooltip(true);
-  moreMenu.hidden=false;moreButton.setAttribute('aria-expanded','true');
-  if(!reduceMotion)moreMenu.animate([{opacity:0,transform:'translateY(-5px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'});
-}
-moreButton.addEventListener('click',()=>{if(moreMenu.hidden)openWorkspaceMore();else closeWorkspaceMore()});
-moreRoot.addEventListener('pointerdown',e=>e.stopPropagation());
-document.addEventListener('pointerdown',e=>{if(!moreRoot.contains(e.target))closeWorkspaceMore()});
-moreRoot.addEventListener('keydown',e=>{
-  const items=[...moreMenu.querySelectorAll('[role=menuitem]')];
-  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeWorkspaceMore(true)}
-  if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){
-    e.preventDefault();e.stopPropagation();if(moreMenu.hidden)openWorkspaceMore();
-    const index=items.indexOf(document.activeElement),next=e.key==='Home'?0:e.key==='End'?items.length-1:e.key==='ArrowDown'?(index+1)%items.length:(index<0?items.length-1:(index-1+items.length)%items.length);items[next].focus();
-  }
-  if(e.key==='Tab')closeWorkspaceMore();
-});
-$('#workspace-menu-rename').addEventListener('click',()=>{
-  closeWorkspaceMore();renameInput.value=$('#workspace-name').textContent;
-  $('#close-result').hidden=true;renameInput.hidden=false;renameInput.focus({preventScroll:true});renameInput.select();
-});
-function finishWorkspaceRename(save){
-  if(renameInput.hidden)return;
-  if(save&&renameInput.value.trim()){$('#workspace-name').textContent=renameInput.value.trim();syncSessionFolder()}
-  renameInput.hidden=true;$('#close-result').hidden=false;
-}
-renameInput.addEventListener('blur',()=>finishWorkspaceRename(true));
-renameInput.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();finishWorkspaceRename(e.key==='Enter');moreButton.focus({preventScroll:true})}});
-$('#workspace-menu-pin').addEventListener('click',()=>{
-  workspacePinned=!workspacePinned;$('#session-button').classList.toggle('is-pinned',workspacePinned);
-  $('#session-button').setAttribute('aria-description',workspacePinned?'Pinned workspace':'');
-  $('#workspace-menu-pin span:last-child').textContent=workspacePinned?'Unpin':'Pin';
-  closeWorkspaceMore(true);toast(workspacePinned?'Workspace pinned':'Workspace unpinned');
-});
-$('#workspace-menu-delete').addEventListener('click',()=>{
-  closeWorkspaceMore();if(expandedStack)closeStackFocus();
-  deleteGenerations([...generationItems]);
-});
-
 // A separate preview surface animates from the card without changing canvas positions.
 let openedGeneration=null,viewerClosing=false,viewerMotion=null,viewerRadiusMotion=null;
 const viewer=$('#generation-viewer'),viewerShell=$('#viewer-image-shell');
@@ -913,7 +854,7 @@ function viewerLayout(){
   const nativeWidth=openedGeneration.kind==='text'?640:openedGeneration.image.naturalWidth||openedGeneration.width,nativeHeight=openedGeneration.kind==='text'?720:openedGeneration.image.naturalHeight||openedGeneration.height;
   const maxWidth=Math.max(80,Math.min(compact?960:820,r.width-(compact?40:580))),maxHeight=Math.max(80,compact?r.height*.52:Math.min(720,r.height*.66));
   const scale=Math.min(1,maxWidth/nativeWidth,maxHeight/nativeHeight),w=nativeWidth*scale,h=nativeHeight*scale;
-  const compactTop=mobileLayout.matches&&!signedIn?120:80;
+  const compactTop=mobileLayout.matches?120:80;
   const top=compact?compactTop+(Math.max(80,r.height*.52)-h)/2:(r.height-h)/2;
   Object.assign(viewerShell.style,{width:w+'px',height:h+'px',left:(r.width-w)/2+'px',top:top+'px'});
   const details=$('#viewer-details');
@@ -925,12 +866,12 @@ function viewerCardRadius(item,viewport){
   return `${radius*viewport.width/item.card.offsetWidth}px / ${radius*viewport.height/item.card.offsetHeight}px`;
 }
 function viewerInterface(away){
-  [canvasViewport,dock,$('.canvas-zoom'),$('#close-result'),$('#workspace-more'),...(signedIn?[$('.top-actions'),$('.mobile-header')]:[])].forEach(el=>el.inert=away);
+  [canvasViewport,dock,$('.canvas-zoom'),$('#close-result')].forEach(el=>el.inert=away);
 }
 function openGenerationViewer(item){
   if(openedGeneration||item.status!=='complete')return;
   const from=item.card.getBoundingClientRect();
-  clearCanvasGesture();hideTooltip(true);closeWorkspaceMore();
+  clearCanvasGesture();hideTooltip(true);
   openedGeneration=item;viewerClosing=false;resetViewerImageZoom();
   const image=$('#viewer-image');image.src=item.image.src;image.alt=`Generation ${item.id}`;
   $('#viewer-request').textContent=item.prompt;
@@ -951,7 +892,7 @@ function openGenerationViewer(item){
     const b=other.element.getBoundingClientRect(),dx=b.left+b.width/2-(center.left+center.width/2),dy=b.top+b.height/2-(center.top+center.height/2),length=Math.hypot(dx,dy)||1,z=mobileLayout.matches?1:canvasView.z;
     other.element.style.setProperty('--viewer-out-x',(dx/length*110/z)+'px');other.element.style.setProperty('--viewer-out-y',(dy/length*110/z)+'px');other.element.classList.add('viewer-other');
   });
-  workspace.classList.toggle('viewer-guest',!signedIn);workspace.classList.add('viewer-open');document.documentElement.classList.add('generation-viewer-open');viewerInterface(true);
+  workspace.classList.add('viewer-guest');workspace.classList.add('viewer-open');document.documentElement.classList.add('generation-viewer-open');viewerInterface(true);
   viewerMotion?.cancel();viewerRadiusMotion?.cancel();
   if(!reduceMotion){
     const motionOptions={duration:420,easing:'cubic-bezier(.2,.75,.25,1)'};
@@ -982,7 +923,7 @@ async function closeGenerationViewer(immediate=false){
   if(!immediate&&item.element.isConnected)item.card.focus({preventScroll:true});
 }
 $('#viewer-back').addEventListener('click',()=>closeGenerationViewer());
-document.addEventListener('keydown',e=>{if(openedGeneration&&e.key==='Escape'&&!e.target.closest('dialog,#profile-menu')){e.preventDefault();e.stopImmediatePropagation();closeGenerationViewer()}},true);
+document.addEventListener('keydown',e=>{if(openedGeneration&&e.key==='Escape'&&!e.target.closest('dialog')){e.preventDefault();e.stopImmediatePropagation();closeGenerationViewer()}},true);
 $('#viewer-download').addEventListener('click',()=>{if(openedGeneration)downloadGenerations([openedGeneration]).catch(()=>toast('Could not download the image. Try again.'))});
 $('#viewer-share').addEventListener('click',()=>{if(openedGeneration)shareGenerations([openedGeneration])});
 $('#viewer-enhance').addEventListener('click',async()=>{const item=openedGeneration;if(!item)return;await closeGenerationViewer();enhanceGenerations([item])});
@@ -1174,7 +1115,6 @@ function setTemplateCategory(category){
   animateLibraryEntry(visible);
 }
 function openTemplates(){
-  closeProfileMenu({immediate:true});
   if(templatesOpen)return;
   hideTooltip(true);clearCanvasGesture();closeGenerationViewer(true);resetCardMotion();
   if(mobileLayout.matches)setSidebar(false,{focus:false});
@@ -1197,73 +1137,6 @@ function closeTemplates(){
 $('[data-templates-trigger]').addEventListener('click',openTemplates);
 $$('[data-template-filter]').forEach(button=>button.addEventListener('click',()=>setTemplateCategory(button.dataset.templateFilter)));
 window.addEventListener('blur',resetLibraryMagnet);templatesPage.addEventListener('scroll',resetLibraryMagnet,{passive:true});mobileLayout.addEventListener('change',resetLibraryMagnet);
-
-const profileTrigger=$('.bottom-nav [data-auth-trigger]'),profileMenu=$('#profile-menu');
-const profileGuestMarkup=profileTrigger.innerHTML;
-let profileMenuOpen=false,profileMenuMotion=null,profileMenuRevision=0,profileName='Magic Hour account',profileEmail='Personal account';
-function syncProfileMenu(){
-  $('#profile-menu-email').textContent=profileEmail;
-  $('#settings-profile-name').textContent=profileName;$('#settings-profile-email').textContent=profileEmail;
-  $('#profile-credit-count').textContent=creditBalance.toLocaleString('en-US').replaceAll(',',' ');
-  $('#profile-credit-meter').setAttribute('aria-valuemax',String(Math.max(CREDIT_ALLOWANCE,creditBalance)));$('#profile-credit-meter').setAttribute('aria-valuenow',String(creditBalance));
-  $('#profile-credit-fill').style.width=(creditBalance>0?100:0)+'%';
-}
-function positionProfileMenu(){
-  if(!profileMenuOpen)return;
-  const anchor=profileTrigger.getBoundingClientRect(),size=profileMenu.getBoundingClientRect();
-  const left=mobileLayout.matches?Math.max(12,Math.min(anchor.left,innerWidth-size.width-12)):Math.max(12,Math.min(sidebar.getBoundingClientRect().right-8,innerWidth-size.width-12));
-  const top=Math.max(12,Math.min(anchor.bottom-size.height,innerHeight-size.height-12));
-  profileMenu.style.left=left+'px';profileMenu.style.top=top+'px';
-}
-function openProfileMenu(){
-  if(!signedIn||profileMenuOpen)return;
-  hideTooltip(true);closeWorkspaceMore();syncProfileMenu();
-  profileMenuRevision++;profileMenuMotion?.cancel();profileMenuOpen=true;profileMenu.hidden=false;profileMenu.inert=false;profileTrigger.setAttribute('aria-expanded','true');positionProfileMenu();
-  if(!reduceMotion)profileMenuMotion=profileMenu.animate([{opacity:0,transform:'translate(-6px,8px) scale(.975)'},{opacity:1,transform:'translate(0,0) scale(1)'}],{duration:260,easing:'cubic-bezier(.22,1,.36,1)'});
-  $('#profile-view-plans').focus({preventScroll:true});
-}
-async function closeProfileMenu({focus=false,immediate=false}={}){
-  if(!profileMenuOpen)return;
-  profileMenuOpen=false;profileMenu.inert=true;profileTrigger.setAttribute('aria-expanded','false');
-  const revision=++profileMenuRevision;profileMenuMotion?.cancel();
-  if(!reduceMotion&&!immediate){profileMenuMotion=profileMenu.animate([{opacity:1,transform:'translate(0,0) scale(1)'},{opacity:0,transform:'translate(-3px,4px) scale(.985)'}],{duration:140,easing:'ease-in'});try{await profileMenuMotion.finished}catch{}}
-  if(revision!==profileMenuRevision)return;
-  profileMenu.hidden=true;profileMenuMotion=null;if(focus)profileTrigger.focus({preventScroll:true});
-}
-profileTrigger.addEventListener('click',()=>{if(signedIn)profileMenuOpen?closeProfileMenu({focus:true}):openProfileMenu()});
-profileTrigger.addEventListener('keydown',e=>{if(signedIn&&['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();openProfileMenu();if(e.key==='ArrowUp')$('#profile-logout').focus()}});
-document.addEventListener('pointerdown',e=>{if(profileMenuOpen&&!profileMenu.contains(e.target)&&!profileTrigger.contains(e.target))closeProfileMenu()});
-document.addEventListener('keydown',e=>{
-  if(!profileMenuOpen)return;
-  if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeProfileMenu({focus:true})}
-  if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){
-    e.preventDefault();e.stopImmediatePropagation();const buttons=[...profileMenu.querySelectorAll('button')],index=buttons.indexOf(document.activeElement),next=e.key==='Home'?0:e.key==='End'?buttons.length-1:(index+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;buttons[next].focus();
-  }
-},true);
-profileMenu.addEventListener('focusout',()=>requestAnimationFrame(()=>{if(profileMenuOpen&&!profileMenu.contains(document.activeElement)&&document.activeElement!==profileTrigger)closeProfileMenu()}));
-new ResizeObserver(positionProfileMenu).observe(sidebar);window.addEventListener('resize',positionProfileMenu);
-$('#profile-view-plans').addEventListener('click',()=>{closeProfileMenu({immediate:true});openPricing(profileTrigger)});
-const accountSettings=$('#account-settings');
-function syncSettingsTheme(){const theme=document.documentElement.dataset.theme;$$('[data-settings-theme]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.settingsTheme===theme)))}
-$('#profile-settings').addEventListener('click',()=>{
-  closeProfileMenu({immediate:true});syncProfileMenu();syncSettingsTheme();accountSettings.showModal();
-  if(!reduceMotion)accountSettings.animate([{opacity:0,translate:'0 12px',scale:'.985'},{opacity:1,translate:'0 0',scale:'1'}],{duration:260,easing:'cubic-bezier(.22,1,.36,1)'});
-});
-function closeAccountSettings(){accountSettings.close();profileTrigger.focus({preventScroll:true})}
-$('#account-settings-close').addEventListener('click',closeAccountSettings);
-accountSettings.addEventListener('cancel',e=>{e.preventDefault();closeAccountSettings()});
-accountSettings.addEventListener('click',e=>{if(e.target!==accountSettings)return;const r=accountSettings.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeAccountSettings()});
-$$('[data-settings-theme]').forEach(button=>button.addEventListener('click',()=>{setTheme(button.dataset.settingsTheme);syncSettingsTheme()}));
-$('#profile-logout').addEventListener('click',async()=>{
-  try{await api('/api/auth/logout',{})}catch(error){toast(error.message);return}
-
-  closeProfileMenu({immediate:true});signedIn=false;hideTooltip(true);profileTrigger.innerHTML=profileGuestMarkup;
-  profileTrigger.dataset.tip='Sign Up / Log In';profileTrigger.setAttribute('aria-label','Sign Up / Log In');profileTrigger.setAttribute('aria-haspopup','dialog');profileTrigger.setAttribute('aria-controls','auth-dialog');profileTrigger.removeAttribute('aria-expanded');
-  $('.mobile-signup').hidden=false;$('.mobile-signup').setAttribute('aria-haspopup','dialog');$('.mobile-signup').setAttribute('aria-controls','auth-dialog');$('.top-actions').hidden=false;
-  closeWorkspaceMore();syncWorkspaceMore();
-  if(openedGeneration){workspace.classList.add('viewer-guest');$('.top-actions').inert=false;$('.mobile-header').inert=false;viewerLayout()}
-  profileTrigger.focus({preventScroll:true});
-});
 
 // Keep the home previews playing only while their cards are visible.
 const homePreviewVideos=$$('.template-video'),homePreviewVisible=new Map(),homePreviewMotion=matchMedia('(prefers-reduced-motion:reduce)');
@@ -1288,8 +1161,7 @@ async function api(path,body){
 }
 function showTrial(){
   const remaining=sessionState?.trial?.remaining??1;
-  $('#trial-status').textContent=remaining?'Your first creation is included. No sign-up needed.':'Your trial creation is ready. Connect Magic Hour to keep creating.';
-  creditBalance=remaining;updateCreditBalance();
+  $('#trial-status').textContent=remaining?'Your first creation is included. No sign-up needed.':'Your included creation is used. Continue creating on Magic Hour.';
 }
 async function uploadAttachment(item){
   if(item.assetId)return item.assetId;
@@ -1390,11 +1262,6 @@ async function pollJob(item){
 async function loadSession(){
   try{
     sessionState=await api('/api/session');if(sessionState.configured)showTrial();
-    if(sessionState.account?.connected){
-      signedIn=true;profileEmail=sessionState.account.email||'Connected Magic Hour account';profileName=profileEmail.split('@')[0];
-      $('.bottom-nav [data-auth-trigger] .nav-label').textContent='My account';$('.top-actions').hidden=true;$('.mobile-signup').hidden=true;
-      $('#profile-menu-email').textContent=profileEmail;syncProfileMenu();
-    }
     const jobs=[...(sessionState.jobs||[])].sort((a,b)=>Number(!['complete','error','canceled','submission_unknown'].includes(a.status))-Number(!['complete','error','canceled','submission_unknown'].includes(b.status)));
     for(const job of jobs)await displayJob(job);
     if(sessionState.configured===false)showRequestMessage('Create.here is getting ready. Generation will be available soon.');

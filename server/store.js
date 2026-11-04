@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual, randomUUID, createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 export const required = ["OPENAI_API_KEY", "MAGIC_HOUR_API_KEY", "SESSION_SECRET", "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"];
 export function missingConfig() {
   const missing = required.filter(name => !process.env[name]);
@@ -28,17 +28,6 @@ export function sessionId(req, res) {
   const id = randomUUID(), secure = process.env.NODE_ENV === "production" || req.headers["x-forwarded-proto"] === "https";
   res.setHeader("Set-Cookie", `ch_session=${id}.${signature(id)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${secure ? "; Secure" : ""}`);
   return id;
-}
-const encryptionKey = () => createHmac("sha256", process.env.SESSION_SECRET).update("create-here-oauth").digest();
-export function seal(value) {
-  const nonce = randomBytes(12), cipher = createCipheriv("aes-256-gcm", encryptionKey(), nonce);
-  const bytes = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
-  return Buffer.concat([nonce, cipher.getAuthTag(), bytes]).toString("base64url");
-}
-export function unseal(value) {
-  const bytes = Buffer.from(value, "base64url"), cipher = createDecipheriv("aes-256-gcm", encryptionKey(), bytes.subarray(0, 12));
-  cipher.setAuthTag(bytes.subarray(12, 28));
-  return Buffer.concat([cipher.update(bytes.subarray(28)), cipher.final()]).toString("utf8");
 }
 export const key = (type, id) => `createhere:${type}:${id}`;
 export const get = async (type, id) => { const value = await redis("GET", key(type, id)); return value ? JSON.parse(value) : null; };
