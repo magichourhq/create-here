@@ -204,15 +204,16 @@ function syncActionsMenu(){
   }
 }
 const CARD_GAP=40,SNAP_DISTANCE=36;
+function generationHeight(item){return item.kind==='image'?item.element.scrollHeight:item.height}
 function snapCardPosition(item,x,y,zoom,disabled=false,excluded=new Set()){
   const result={x,y};if(disabled)return result;
   // Keep the layout gap in canvas units; only the pointer's capture radius uses screen pixels.
-  const threshold=SNAP_DISTANCE/zoom,spacing=CARD_GAP,nearby=80/zoom,w=item.width,h=item.height;
+  const threshold=SNAP_DISTANCE/zoom,spacing=CARD_GAP,nearby=80/zoom,w=item.width,h=generationHeight(item),footer=h-item.height,cy=y+footer/2;
   let bestX=threshold,bestY=threshold;
   for(const other of generationItems){
     if(other===item||excluded.has(other)||(expandedStack&&other.stackId!==expandedStack.id))continue;
-    const ow=other.width,oh=other.height;
-    const gapX=Math.max(0,Math.abs(x-other.tx)-(w+ow)/2),gapY=Math.max(0,Math.abs(y-other.ty)-(h+oh)/2);
+    const ow=other.width,oh=generationHeight(other),oy=other.ty+(oh-other.height)/2;
+    const gapX=Math.max(0,Math.abs(x-other.tx)-(w+ow)/2),gapY=Math.max(0,Math.abs(cy-oy)-(h+oh)/2);
     if(gapY<=nearby){
       const separated=Math.abs(x-other.tx)>=(w+ow)/2;
       const anchors=separated?[other.tx+Math.sign(x-other.tx)*((w+ow)/2+spacing)]:[other.tx,other.tx+(w-ow)/2,other.tx+(ow-w)/2];
@@ -222,10 +223,10 @@ function snapCardPosition(item,x,y,zoom,disabled=false,excluded=new Set()){
       }
     }
     if(gapX<=nearby){
-      const separated=Math.abs(y-other.ty)>=(h+oh)/2;
-      const anchors=separated?[other.ty+Math.sign(y-other.ty)*((h+oh)/2+spacing)]:[other.ty,other.ty+(h-oh)/2,other.ty+(oh-h)/2];
+      const separated=Math.abs(cy-oy)>=(h+oh)/2;
+      const anchors=separated?[oy+Math.sign(cy-oy)*((h+oh)/2+spacing)]:[oy,oy+(h-oh)/2,oy+(oh-h)/2];
       for(const anchor of anchors){
-        const delta=anchor-y,distance=Math.abs(delta);
+        const delta=anchor-footer/2-y,distance=Math.abs(delta);
         if(distance<bestY){bestY=distance;result.y=y+delta;}
       }
     }
@@ -236,7 +237,8 @@ function magneticNeighbours(members){
   const neighbours=new Set(),group=new Set(members);
   for(const item of members)for(const other of generationItems){
     if(group.has(other)||(expandedStack&&other.stackId!==expandedStack.id))continue;
-    const dx=Math.abs(item.tx-other.tx),dy=Math.abs(item.ty-other.ty),halfW=(item.width+other.width)/2,halfH=(item.height+other.height)/2;
+    const h=generationHeight(item),oh=generationHeight(other);
+    const dx=Math.abs(item.tx-other.tx),dy=Math.abs(item.ty+(h-item.height)/2-other.ty-(oh-other.height)/2),halfW=(item.width+other.width)/2,halfH=(h+oh)/2;
     if((Math.abs(dx-halfW-CARD_GAP)<1&&dy<halfH)||(Math.abs(dy-halfH-CARD_GAP)<1&&dx<halfW))neighbours.add(other);
   }
   return neighbours;
@@ -376,7 +378,7 @@ function generationBounds(){
   const left=Math.min(...items.map(item=>item.tx-item.element.offsetWidth/2));
   const right=Math.max(...items.map(item=>item.tx+item.element.offsetWidth/2));
   const top=Math.min(...items.map(item=>item.ty-item.element.offsetHeight/2));
-  const bottom=Math.max(...items.map(item=>item.ty+item.element.offsetHeight/2));
+  const bottom=Math.max(...items.map(item=>item.ty-item.element.offsetHeight/2+generationHeight(item)));
   return {x:(left+right)/2,y:(top+bottom)/2,width:right-left,height:bottom-top};
 }
 function itemAt(target){return generationNodes.get(target.closest('.generation-item'))}
@@ -496,15 +498,16 @@ function normalizedCardSize(width,height){
   return {width:w*scale,height:h*scale};
 }
 function addGenerationCardActions(item){
+  const imageResult=item.kind==='image';
   const overlay=document.createElement('div'),controls=document.createElement('div');
   overlay.className='generation-card-overlay';controls.className='generation-card-actions';controls.setAttribute('role','group');controls.setAttribute('aria-label',`Actions for generation ${item.id}`);
-  const actions=[['download','Download','8dfd8'],['enhance','Enhance','adf5e'],['share','Share','91cdd']];
+  const actions=imageResult?[['enhance','Edit image','adf5e'],['download','Download','8dfd8']]:[['download','Download','8dfd8'],['enhance','Enhance','adf5e'],['share','Share','91cdd']];
   for(const [action,label,asset] of actions){
     const button=document.createElement('button'),icon=document.createElement('span'),image=document.createElement('img');
-    button.type='button';button.className='generation-card-action tip '+(action==='download'?'card-download':'');button.dataset.action=action;button.setAttribute('aria-label',`${label} generation ${item.id}`);button.disabled=true;
+    button.type='button';button.className='generation-card-action '+(imageResult?'':'tip ')+(action==='download'?'card-download':'');button.dataset.action=action;button.setAttribute('aria-label',`${label} generation ${item.id}`);button.disabled=true;
     button.dataset.tip=label;
     icon.className='generation-card-action-icon'+(action==='enhance'?' card-enhance-icon':'');image.src=`assets/generation-hover-${asset}.svg`;image.alt='';image.draggable=false;icon.append(image);button.append(icon);
-    const text=document.createElement('span');text.className='card-action-label';text.textContent=label;button.append(text);bindTooltip(button);
+    const text=document.createElement('span');text.className='card-action-label';text.textContent=label;button.append(text);if(!imageResult)bindTooltip(button);
     button.addEventListener('click',e=>{
       e.stopPropagation();hideTooltip(true);if(item.status!=='complete')return;
       if(action==='download')downloadGenerations([item]).catch(()=>toast('Could not download the image. Try again.'));
@@ -519,15 +522,15 @@ function syncGenerationCardActions(locked=running){
   $('#viewer-enhance').disabled=locked;
   generationItems.forEach(item=>item.element.querySelectorAll('.generation-card-action').forEach(button=>{button.disabled=item.status!=='complete'||(button.dataset.action==='enhance'&&locked)}));
 }
-async function makeGeneration(request){
+async function makeGeneration(request,kind){
   const id=++generationNumber,element=document.createElement('div'),card=document.createElement('button'),image=document.createElement('img'),sheen=document.createElement('span'),progress=document.createElement('span');
-  element.className='generation-item';element.dataset.generationId=String(id);
+  element.className='generation-item'+(kind==='image'?' image-result':'');element.dataset.generationId=String(id);
   card.type='button';card.className='result-card';card.setAttribute('aria-label',`Generation ${id}, generating${mobileLayout.matches?'':'. Drag to move'}`);
   image.alt=`Generation ${id}`;image.draggable=false;
   sheen.className='live-sheen';sheen.setAttribute('aria-hidden','true');
   progress.className='progress-label';progress.textContent='Queued';progress.setAttribute('role','status');progress.setAttribute('aria-label',`Generation ${id} status`);
   card.append(image,sheen,progress);element.append(card);
-  const item={id,element,card,image,progress,status:'pending',x:0,y:0,tx:0,ty:0,url:null,prompt:promptInput.value,live:{x:0,y:0,tx:0,ty:0,time:null,frame:0},rippleTimer:null};
+  const item={id,kind,element,card,image,progress,status:'pending',x:0,y:0,tx:0,ty:0,url:null,prompt:promptInput.value,live:{x:0,y:0,tx:0,ty:0,time:null,frame:0},rippleTimer:null};
   const source=attachments.find(a=>a.url);
   if(source){item.url=URL.createObjectURL(source.file);image.src=item.url}
   else image.src='assets/b80ae.svg';
@@ -572,7 +575,7 @@ async function makeGeneration(request){
 }
 function generationRevealZoom(item){
   const width=Math.max(80,canvasViewport.clientWidth-48),height=Math.max(80,canvasViewport.clientHeight-form.getBoundingClientRect().height-160);
-  return Math.max(MIN_ZOOM,Math.min(canvasView.tz,width/item.width,height/item.height));
+  return Math.max(MIN_ZOOM,Math.min(canvasView.tz,width/item.width,height/generationHeight(item)));
 }
 function revealGeneration(item,first){
   if(mobileLayout.matches){
@@ -584,11 +587,11 @@ function revealGeneration(item,first){
   // Keep the user's zoom, shifting the camera only when the new card is outside the usable view.
   canvasView.tz=generationRevealZoom(item);
   const originX=canvasScene.offsetLeft,originY=canvasScene.offsetTop,z=canvasView.tz;
-  const halfW=item.element.offsetWidth*z/2,halfH=item.element.offsetHeight*z/2;
+  const halfW=item.element.offsetWidth*z/2,halfH=item.element.offsetHeight*z/2,footer=(generationHeight(item)-item.element.offsetHeight)*z;
   const cx=originX+canvasView.tx+item.tx*z,cy=originY+canvasView.ty+item.ty*z;
   const left=24,right=canvasViewport.clientWidth-24,top=mobileLayout.matches?112:76,bottom=canvasViewport.clientHeight-form.getBoundingClientRect().height-80;
   if(cx+halfW>right)canvasView.tx-=cx+halfW-right;else if(cx-halfW<left)canvasView.tx+=left-(cx-halfW);
-  if(cy+halfH>bottom)canvasView.ty-=cy+halfH-bottom;else if(cy-halfH<top)canvasView.ty+=top-(cy-halfH);
+  if(cy+halfH+footer>bottom)canvasView.ty-=cy+halfH+footer-bottom;else if(cy-halfH<top)canvasView.ty+=top-(cy-halfH);
   requestCanvasFrame();
 }
 function disposeGeneration(item){
@@ -661,7 +664,7 @@ function openStackFocus(id){
   if(expandedStack)closeStackFocus();
   const members=generationItems.filter(item=>item.stackId===id).sort((a,b)=>a.id-b.id);if(members.length<2)return;
   const x=members[0].tx,y=members[0].ty,columns=Math.min(3,members.length),rows=Math.ceil(members.length/columns);
-  const width=Math.max(...members.map(item=>item.width)),height=Math.max(...members.map(item=>item.height));
+  const width=Math.max(...members.map(item=>item.width)),height=Math.max(...members.map(generationHeight));
   expandedStack={id,x,y,extracted:new Set(),view:{tx:canvasView.tx,ty:canvasView.ty,tz:canvasView.tz}};
   members.forEach((item,index)=>{item.tx=x+(index%columns-(columns-1)/2)*(width+CARD_GAP);item.ty=y+(Math.floor(index/columns)-(rows-1)/2)*(height+CARD_GAP);item.element.style.zIndex=String(++cardStack)});
   workspace.classList.add('stack-focus-open');selectGenerations([]);refreshStacks();
@@ -1219,8 +1222,8 @@ async function displayJob(job){
   if(generationItems.some(item=>item.jobId===job.id))return;
   const first=generationItems.length===0;
   running=true;showingHome=false;
-  const request=++generationRequest,item=await makeGeneration(request);if(!item){running=false;return;}
-  item.jobId=job.id;item.kind=job.kind;item.prompt=job.prompt||promptInput.value;
+  const request=++generationRequest,item=await makeGeneration(request,job.kind);if(!item){running=false;return;}
+  item.jobId=job.id;item.prompt=job.prompt||promptInput.value;
   $('#workspace-name').textContent='Your creations';syncSessionFolder();
   applyJob(item,job);requestAnimationFrame(()=>revealGeneration(item,first));
   if(!['complete','error','canceled','submission_unknown'].includes(job.status)){
