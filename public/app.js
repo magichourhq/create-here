@@ -1235,7 +1235,7 @@ function applyJob(item,job){
     item.downloadUrl=`/api/download/${encodeURIComponent(job.id)}/0`;item.text=job.text||'';
     item.progress.hidden=true;item.element.classList.add('is-complete');resetLiveCard(item);
     if(job.kind==='image'){
-      item.image.onload=()=>{const size=normalizedCardSize(item.image.naturalWidth,item.image.naturalHeight);Object.assign(item,size);item.element.style.width=size.width+'px';item.element.style.height=size.height+'px';item.element.style.setProperty('--item-aspect',String(item.image.naturalWidth/item.image.naturalHeight));layoutGenerationItems();paintCanvas()};
+      item.image.onload=()=>{const size=normalizedCardSize(item.image.naturalWidth,item.image.naturalHeight);size.width*=1.5;size.height*=1.5;Object.assign(item,size);item.element.style.width=size.width+'px';item.element.style.height=size.height+'px';item.element.style.setProperty('--item-aspect',String(item.image.naturalWidth/item.image.naturalHeight));layoutGenerationItems();if(!mobileLayout.matches)revealGeneration(item,generationItems.length===1);paintCanvas()};
       item.image.src=item.downloadUrl+'?preview=1';
     }else if(job.kind==='video'){
       item.image.hidden=true;const video=document.createElement('video');video.src=item.downloadUrl+'?preview=1';video.muted=true;video.loop=true;video.playsInline=true;video.preload='metadata';video.setAttribute('aria-label','Generated video');item.card.prepend(video);video.play().catch(()=>{});
