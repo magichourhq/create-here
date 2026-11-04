@@ -106,7 +106,7 @@ function updatePrompt(){
 }
 function updatePromptFade(){const overflow=promptInput.scrollHeight-promptInput.clientHeight;promptInput.style.setProperty('--prompt-fade-top',overflow>1&&promptInput.scrollTop>1?'10px':'0px');promptInput.style.setProperty('--prompt-fade-bottom',overflow>1&&overflow-promptInput.scrollTop>1?'10px':'0px');}
 promptInput.addEventListener('scroll',updatePromptFade,{passive:true});new ResizeObserver(updatePromptFade).observe(promptInput);
-promptInput.addEventListener('input',updatePrompt);promptInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();form.requestSubmit()}if(e.key==='Escape')promptInput.blur()});
+promptInput.addEventListener('input',updatePrompt);promptInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit()}if(e.key==='Escape')promptInput.blur()});
 function toast(text){clearTimeout(toastTimer);$('#toast').textContent=text;$('#toast').classList.add('visible');toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3000)}
 
 $('#attach-button').addEventListener('click',()=>$('#file-input').click());$('#file-input').addEventListener('change',e=>{addFiles(e.target.files);e.target.value=''});
