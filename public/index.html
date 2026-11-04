@@ -89,47 +89,22 @@
       <div class="templates-grid" id="templates-grid" aria-label="Templates"></div>
     </section>
 
-    <section id="pricing-page" class="pricing-page" role="dialog" aria-modal="true" aria-labelledby="pricing-title" tabindex="-1" hidden>
-      <button type="button" id="pricing-close" class="pricing-close" aria-label="Close pricing"><span class="pricing-desktop-close"><img src="assets/pricing-close.svg" alt="" width="16" height="16"></span><span class="pricing-mobile-close"><img src="assets/auth-c2321.svg" alt="" width="17.916" height="17.916"></span></button>
-      <div class="pricing-layout">
-        <div class="pricing-main">
-          <header class="pricing-heading"><h1 id="pricing-title">Pricing</h1><p>Choose the right plan for your creative flow.</p></header>
-          <div class="billing-toggle" role="group" aria-label="Billing period"><span class="billing-indicator" aria-hidden="true"></span><button type="button" data-billing="monthly" aria-pressed="true">Monthly</button><button type="button" data-billing="yearly" aria-pressed="false">Yearly</button><span class="billing-offer">-50%</span></div>
-          <div class="pricing-cards">
-<article class="pricing-card" data-plan="Mini" aria-label="Mini plan">
-  <div class="pricing-card-main"><div class="pricing-plan-heading"><h2>Mini</h2><div class="plan-badges"><span class="plan-discount" hidden>-25%</span></div><p>For occasional projects and ideas<br>worth exploring.</p></div>
-  <div class="plan-price-block"><div class="plan-price-row"><span class="plan-old-price" hidden>$7</span><span class="plan-price">$7</span><span class="plan-price-period">/ month</span></div><p class="plan-billing-note" hidden></p></div>
-  <button type="button" class="plan-choose " data-choose-plan="Mini">Go to Mini</button></div>
-  <div class="plan-credits"><p>5 000 credits per month</p><p>~5 min of video or 1 000 images</p></div>
-</article><article class="pricing-card" data-plan="Pro" aria-label="Pro plan">
-  <div class="pricing-card-main"><div class="pricing-plan-heading"><h2>Pro</h2><div class="plan-badges"><span class="plan-discount" hidden>-50%</span><span class="plan-recommended">Recommended</span></div><p>For everyday creation, from first drafts to final touches.</p></div>
-  <div class="plan-price-block"><div class="plan-price-row"><span class="plan-old-price" hidden>$25</span><span class="plan-price">$25</span><span class="plan-price-period">/ month</span></div><p class="plan-billing-note" hidden></p></div>
-  <button type="button" class="plan-choose plan-accent" data-choose-plan="Pro">Go to Pro</button></div>
-  <div class="plan-credits"><p>25 000 credits per month</p><p>~17 min of video or 5 000 images</p></div>
-</article><article class="pricing-card" data-plan="Max" aria-label="Max plan">
-  <div class="pricing-card-main"><div class="pricing-plan-heading"><h2>Max</h2><div class="plan-badges"><span class="plan-discount" hidden>-30%</span></div><p>For ambitious projects and a steady<br>flow of content.</p></div>
-  <div class="plan-price-block"><div class="plan-price-row"><span class="plan-old-price" hidden>$60</span><span class="plan-price">$60</span><span class="plan-price-period">/ month</span></div><p class="plan-billing-note" hidden></p></div>
-  <button type="button" class="plan-choose " data-choose-plan="Max">Go to Max</button></div>
-  <div class="plan-credits"><p>70 000 credits per month</p><p>~49 min of video or 14 000 images</p></div>
-</article></div></div>
-        <footer class="pricing-contact"><p>Looking for a special plan tailored to your needs?</p><button type="button" id="pricing-contact"><img src="assets/pricing-contact.svg" alt="" width="16" height="16">Contact us</button></footer>
-      </div>
-    </section>
+    <section id="pricing-page" hidden></section>
     <header class="top-actions" aria-label="Account"><button class="pill" data-pricing-trigger><span class="button-label">Pricing</span></button><button class="pill" data-auth-trigger aria-haspopup="dialog" aria-controls="auth-dialog"><span class="button-label">Sign In</span></button><button class="pill accent" data-auth-trigger aria-haspopup="dialog" aria-controls="auth-dialog"><span class="button-label">Create free account</span></button></header>
     <section class="canvas" aria-label="Start creating">
       <div class="template-stage" id="template-stage">
-        <button class="float-card song" data-template="Song" data-depth="0.85" style="--x:-1.305px;--y:224.96px;--w:190px;--h:190px;--rotation:-1deg" aria-label="Use Song template">
-          <span class="card-surface"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="record"><span class="record-disc"><img class="record-color" src="assets/b1ae1.png" alt=""><img class="record-center" src="assets/39387.svg" alt=""><img class="record-label" src="assets/e034b.svg" alt=""><span class="record-type" aria-hidden="true"></span></span></span><span class="card-label">Song</span></span>
+        <button class="float-card song" data-template="Song" data-depth="0.85" style="--x:-1.305px;--y:224.96px;--w:190px;--h:190px;--rotation:-1deg" aria-label="Use Instrumental template">
+          <span class="card-surface"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="record"><span class="record-disc"><img class="record-color" src="assets/b1ae1.png" alt=""><img class="record-center" src="assets/39387.svg" alt=""><img class="record-label" src="assets/e034b.svg" alt=""><span class="record-type" aria-hidden="true"></span></span></span><span class="card-label">Instrumental</span></span>
         </button>
         <button class="float-card cinematic create-video" data-template="Create video" data-depth="0.55" style="--x:244.952px;--y:33.114px;--w:391px;--h:220px;--rotation:-.5deg" aria-label="Use Create video template"><span class="card-surface photo"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><video class="card-image template-video" src="assets/home-create-video.mp4" poster="assets/home-create-video.png" autoplay loop muted playsinline preload="auto" aria-label="A French bulldog in a red jacket walking beside a blue building"></video><span class="shade"></span><span class="card-label">Create video</span></span></button>
         <button class="float-card portrait photo-edit" data-template="Photo edit" data-depth="0.7" style="--x:705.743px;--y:68.903px;--w:220px;--h:220px;--rotation:1deg" aria-label="Use Photo edit template"><span class="card-surface photo"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><img class="card-image" src="assets/home-edit-photo.png" alt="Studio portrait of a man in a black T-shirt"><span class="shade"></span><span class="card-label">Photo edit</span></span></button>
         <button class="float-card packaging" data-template="Product photo" data-depth="1.05" style="--x:986.644px;--y:185.96px;--w:190px;--h:190px;--rotation:-1deg" aria-label="Use Product photo template"><span class="card-surface photo"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><img class="card-image" src="assets/home-packaging.png" alt="AQUA coffee packaging in deep pink on a soft pink background"><span class="shade"></span><span class="card-label">Product photo</span></span></button>
-        <button class="float-card voiceover" data-template="Voiceover" data-depth="1.15" style="--x:111.883px;--y:459.643px;--w:160px;--h:160px;--rotation:1.5deg" aria-label="Use Voiceover template"><span class="card-surface"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="voiceover-illustration" aria-hidden="true"><span class="voiceover-wave"></span><span class="voiceover-wave"></span><span class="voiceover-wave"></span><span class="voiceover-mic"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="12.1667" height="14.8333" viewBox="0 0 12.1667 14.8333" fill="none" class="voiceover-mic-icon" aria-hidden="true" focusable="false">
+        <button class="float-card voiceover" data-template="Voiceover" data-depth="1.15" style="--x:111.883px;--y:459.643px;--w:160px;--h:160px;--rotation:1.5deg" aria-label="Use Voiceover script template"><span class="card-surface"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="voiceover-illustration" aria-hidden="true"><span class="voiceover-wave"></span><span class="voiceover-wave"></span><span class="voiceover-wave"></span><span class="voiceover-mic"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="12.1667" height="14.8333" viewBox="0 0 12.1667 14.8333" fill="none" class="voiceover-mic-icon" aria-hidden="true" focusable="false">
 <g>
 <path d="M9.41667 6.75V4.08333C9.41667 2.24238 7.92428 0.75 6.08333 0.75C4.24238 0.75 2.75 2.24238 2.75 4.08333V6.75C2.75 8.59095 4.24238 10.0833 6.08333 10.0833C7.92428 10.0833 9.41667 8.59095 9.41667 6.75Z" stroke-width="1.5" stroke="currentColor" />
 <path d="M11.4167 6.75C11.4167 9.69552 9.02885 12.0833 6.08333 12.0833M6.08333 12.0833C3.13781 12.0833 0.75 9.69552 0.75 6.75M6.08333 12.0833V14.0833M6.08333 14.0833H8.08333M6.08333 14.0833H4.08333" stroke-width="1.5" stroke-linecap="round" stroke="currentColor" />
 </g>
-</svg></span></span><span class="card-label">Voiceover</span></span></button>
+</svg></span></span><span class="card-label">Voiceover script</span></span></button>
         <button class="float-card animate" data-template="Animate image" data-depth="0.9" style="--x:878.234px;--y:441.69px;--w:284px;--h:160px;--rotation:1.5deg" aria-label="Use Animate image template"><span class="card-surface photo"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><video class="card-image template-video" src="assets/home-animate-image.mp4" poster="assets/home-animate-image.png" autoplay loop muted playsinline preload="auto" aria-label="Animated portrait of Salvador Dalí"></video><span class="shade"></span><span class="card-label">Animate image</span></span></button>
         <div class="greeting"><h1>What will you make today?</h1><p>Pick a template or create something entirely your own.</p></div>
       </div>
@@ -198,6 +173,7 @@
       </div>
       <div class="processing-info" id="processing-info" role="status" aria-live="polite" hidden><span class="status-dot"></span><span id="processing-text">Understanding your idea…</span></div>
       <form class="composer" id="composer">
+        <p id="request-message" class="request-message" role="status" hidden></p><button type="button" id="reference-summary" class="reference-summary" hidden></button>
         <div class="attachments" id="attachments" aria-label="Attached files" hidden></div>
         <textarea id="prompt" rows="1" aria-label="Describe what you want to create or change" placeholder="Describe what you want to create or change…"></textarea>
         <div class="composer-controls">
@@ -207,30 +183,7 @@
 <path id="ui-attach-Vector 4049" d="M0.75 6.08333H11.4167" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" data-icon-motion="plus-horizontal" />
 </g>
 </svg></button>
-          <div class="mode-wrapper">
-            <button type="button" class="mode-button tip" id="mode-button" data-tip="Generation mode" aria-label="Generation mode: Balanced" aria-haspopup="dialog" aria-expanded="false"><span class="mode-icon"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="none" overflow="visible" width="13.3333" height="13.3333" viewBox="0 0 13.3333 13.3333" fill="none" class="ui-icon motion-icon icon-mode" aria-hidden="true" focusable="false">
-<g id="ui-mode-Vector">
-<use xlink:href="#ui-mode-stroke0_0_2795" fill="currentColor" />
-<path d="M1.70543 6.66667C1.70543 3.92665 3.92665 1.70543 6.66667 1.70543V11.6279C3.92665 11.6279 1.70543 9.40668 1.70543 6.66667Z" fill="currentColor" data-icon-motion="mode-half" />
-<mask id="ui-mode-stroke1_0_2795" fill="white">
-<use xlink:href="#ui-mode-stroke0_0_2795" />
-<path d="M1.70543 6.66667C1.70543 3.92665 3.92665 1.70543 6.66667 1.70543V11.6279C3.92665 11.6279 1.70543 9.40668 1.70543 6.66667Z" />
-</mask>
-<path d="M6.66667 1.70543H7.66667V0.705426H6.66667V1.70543ZM6.66667 11.6279V12.6279H7.66667V11.6279H6.66667ZM12.4031 6.66667H13.4031C13.4031 2.94624 10.3871 -0.0697675 6.66667 -0.0697675V0.930232V1.93023C9.28253 1.93023 11.4031 4.05081 11.4031 6.66667H12.4031ZM6.66667 0.930232V-0.0697675C2.94624 -0.0697675 -0.0697674 2.94624 -0.0697674 6.66667H0.930233H1.93023C1.93023 4.05081 4.05081 1.93023 6.66667 1.93023V0.930232ZM0.930233 6.66667H-0.0697674C-0.0697674 10.3871 2.94624 13.4031 6.66667 13.4031V12.4031V11.4031C4.05081 11.4031 1.93023 9.28253 1.93023 6.66667H0.930233ZM6.66667 12.4031V13.4031C10.3871 13.4031 13.4031 10.3871 13.4031 6.66667H12.4031H11.4031C11.4031 9.28253 9.28253 11.4031 6.66667 11.4031V12.4031ZM13.3333 6.66667H12.3333C12.3333 9.79628 9.79628 12.3333 6.66667 12.3333V13.3333V14.3333C10.9008 14.3333 14.3333 10.9008 14.3333 6.66667H13.3333ZM6.66667 13.3333V12.3333C3.53705 12.3333 1 9.79628 1 6.66667H0H-1C-1 10.9008 2.43248 14.3333 6.66667 14.3333V13.3333ZM0 6.66667H1C1 3.53705 3.53705 1 6.66667 1V0V-1C2.43248 -1 -1 2.43248 -1 6.66667H0ZM6.66667 0V1C9.79628 1 12.3333 3.53705 12.3333 6.66667H13.3333H14.3333C14.3333 2.43248 10.9008 -1 6.66667 -1V0ZM6.66667 1.70543H5.66667V11.6279H6.66667H7.66667V1.70543H6.66667ZM6.66667 11.6279V10.6279C4.47893 10.6279 2.70543 8.8544 2.70543 6.66667H1.70543H0.705426C0.705426 9.95897 3.37436 12.6279 6.66667 12.6279V11.6279ZM6.66667 1.70543V0.705426C3.37436 0.705426 0.705426 3.37436 0.705426 6.66667H1.70543H2.70543C2.70543 4.47893 4.47893 2.70543 6.66667 2.70543V1.70543Z" fill="currentColor" mask="url(#ui-mode-stroke1_0_2795)" />
-</g>
-<defs>
-<path id="ui-mode-stroke0_0_2795" d="M12.4031 6.66667C12.4031 3.49852 9.83481 0.930232 6.66667 0.930232C3.49852 0.930232 0.930233 3.49852 0.930233 6.66667C0.930233 9.83481 3.49852 12.4031 6.66667 12.4031C9.83481 12.4031 12.4031 9.83481 12.4031 6.66667ZM13.3333 6.66667C13.3333 10.3486 10.3486 13.3333 6.66667 13.3333C2.98477 13.3333 0 10.3486 0 6.66667C0 2.98477 2.98477 0 6.66667 0C10.3486 0 13.3333 2.98477 13.3333 6.66667Z" />
-</defs>
-</svg></span><span id="mode-name">Balanced</span></button>
-            <div id="mode-menu" class="mode-menu" role="dialog" aria-label="Generation mode" inert><p class="mode-title">Mode: <strong id="mode-title">Balanced</strong></p><p class="mode-description" id="mode-description">Balance quality and cost.<br>Uses <strong>4.5x fewer credits</strong> than Max.</p><div class="quality-slider"><span class="slider-track"></span><span class="slider-fill" id="slider-fill"></span><span class="slider-thumb" id="slider-thumb"></span><input id="mode-range" type="range" min="0" max="2" step="1" value="1" aria-label="Generation quality" aria-valuetext="Balanced"></div></div>
-          </div>
           <span class="controls-spacer"></span>
-          <button type="button" class="icon-button tip" id="voice-button" data-tip="Voice input" aria-label="Preview voice input"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="12.1667" height="14.8333" viewBox="0 0 12.1667 14.8333" fill="none" class="ui-icon motion-icon icon-voice" aria-hidden="true" focusable="false">
-<g id="ui-voice-elements">
-<path id="ui-voice-Rectangle 2056" d="M9.41667 6.75V4.08333C9.41667 2.24238 7.92428 0.75 6.08333 0.75C4.24238 0.75 2.75 2.24238 2.75 4.08333V6.75C2.75 8.59095 4.24238 10.0833 6.08333 10.0833C7.92428 10.0833 9.41667 8.59095 9.41667 6.75Z" stroke-width="1.5" stroke="currentColor" data-icon-motion="mic-capsule" />
-<path id="ui-voice-Vector" d="M11.4167 6.75C11.4167 9.69552 9.02885 12.0833 6.08333 12.0833M6.08333 12.0833C3.13781 12.0833 0.75 9.69552 0.75 6.75M6.08333 12.0833V14.0833M6.08333 14.0833H8.08333M6.08333 14.0833H4.08333" stroke-width="1.5" stroke-linecap="round" stroke="currentColor" />
-</g>
-</svg></button>
           <button type="submit" class="generate-button tip" id="generate-button" data-tip="Generate" aria-label="Generate" disabled><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="13" height="13" viewBox="0 0 13 13" fill="none" class="generate-icon motion-icon icon-generate" aria-hidden="true" focusable="false">
 <g id="ui-generate-elements">
 <path id="ui-generate-Star 25 (Stroke)" d="M5.16667 10.3333C4.95745 10.3333 4.77035 10.2031 4.69774 10.0069L4.35384 9.07748C3.88702 7.81592 3.69732 7.33405 3.3483 6.98503C2.99928 6.63602 2.51741 6.44631 1.25585 5.97949L0.326482 5.63559C0.130264 5.56298 1.15505e-07 5.37589 1.33795e-07 5.16667C1.52086e-07 4.95745 0.130264 4.77035 0.326482 4.69774L1.25585 4.35384C2.51741 3.88702 2.99929 3.69732 3.3483 3.3483C3.69732 2.99928 3.88702 2.51741 4.35384 1.25585L4.69774 0.326482C4.77035 0.130263 4.95745 0 5.16667 0C5.37589 0 5.56299 0.130263 5.63559 0.326482L5.97949 1.25585C6.44631 2.51741 6.63602 2.99928 6.98503 3.3483C7.33405 3.69732 7.81592 3.88702 9.07748 4.35384L10.0069 4.69774C10.2031 4.77035 10.3333 4.95745 10.3333 5.16667C10.3333 5.37589 10.2031 5.56299 10.0069 5.63559L9.07748 5.97949C7.81592 6.44631 7.33405 6.63602 6.98503 6.98503C6.63602 7.33405 6.44631 7.81592 5.97949 9.07748L5.63559 10.0069C5.56299 10.2031 5.37589 10.3333 5.16667 10.3333Z" fill="currentColor" data-icon-motion="sparkle-main" />
@@ -238,8 +191,9 @@
 </g>
 </svg><span class="spinner"></span><span class="stop-square"></span></button>
         </div>
+      <p id="trial-status" role="status">Your first creation is included. No sign-up needed.</p>
       </form>
-      <input type="file" id="file-input" multiple hidden>
+      <input type="file" id="file-input" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.ppt,.pptx,.txt" multiple hidden>
     </div>
     <div id="drop-overlay" class="drop-overlay" role="status" hidden><svg class="drop-border" aria-hidden="true" fill="none"><rect x=".5" y=".5" rx="12" stroke="currentColor" stroke-width="1" stroke-dasharray="3 4"/></svg><div class="drop-content"><span class="drop-symbol" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 16V4m-5 5 5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h2>Drop your files here</h2><p>Images, video, audio or documents</p></div></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -263,29 +217,25 @@
     <button type="button" class="auth-close" id="auth-close" aria-label="Close authentication" autofocus><span class="auth-icon"><img src="assets/auth-c2321.svg" alt=""></span></button>
     <div class="auth-heading">
       <h2 id="auth-title">Let’s make something</h2>
-      <p id="auth-description">Log in or create an account to save your work and unlock all platform features.</p>
+      <p id="auth-description">Connect your Magic Hour account. Your trial results stay in this workspace. Continue creating with your account on Magic Hour.</p>
     </div>
-    <div class="auth-content">
-      <div class="auth-providers">
-        <button type="button" class="auth-provider" data-auth-provider="Google"><span class="auth-icon auth-provider-icon"><img src="assets/auth-3a21a.svg" alt=""></span><span>Continue with Google</span></button>
-      </div>
-      <div class="auth-divider" aria-hidden="true"><span></span><span class="auth-or">OR</span><span></span></div>
-      <form id="auth-form" class="auth-form">
-        <input id="auth-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="Enter your Email" aria-label="Email address" required maxlength="254">
-        <button type="submit" class="auth-continue">Continue</button>
-      </form>
-    </div>
+    <div class="auth-content"><button type="button" class="auth-continue" id="auth-connect">Continue with Magic Hour</button></div>
     <p id="auth-feedback" class="auth-feedback" role="status" hidden></p>
   </dialog>
 
+  <dialog id="plan-dialog" class="auth-dialog" aria-labelledby="plan-title">
+    <button type="button" class="auth-close" id="plan-close" aria-label="Close creation plan">×</button>
+    <div class="auth-heading"><h2 id="plan-title">Here’s the plan</h2><p id="plan-summary"></p></div>
+    <div class="auth-content"><p id="plan-cost"></p><p id="plan-remaining"></p><button type="button" class="auth-continue" id="plan-confirm">Create it</button><button type="button" class="reference-summary" id="plan-change">Change my request</button></div>
+  </dialog>
   <section id="profile-menu" class="profile-menu" role="dialog" aria-modal="false" aria-label="Account menu" hidden>
     <div class="profile-menu-account">
       <header class="profile-menu-header">
         <span class="profile-menu-avatar" aria-hidden="true">R</span>
-        <div class="profile-menu-identity"><p id="profile-menu-email">testmail@gmail.com</p><span>Basic account</span></div>
+        <div class="profile-menu-identity"><p id="profile-menu-email">Magic Hour account</p><span>Magic Hour account</span></div>
       </header>
       <div class="profile-menu-balance">
-        <div class="profile-balance-heading"><span>Credits</span><span class="profile-balance-left"><span id="profile-credit-count">1 000</span> left</span></div>
+        <div class="profile-balance-heading"><span>Included creations</span><span class="profile-balance-left"><span id="profile-credit-count">1 000</span> left</span></div>
         <div class="profile-balance-track" id="profile-credit-meter" role="meter" aria-label="Available credits" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="1000"><span id="profile-credit-fill"></span></div>
       </div>
       <button type="button" id="profile-view-plans" class="profile-view-plans">Upgrade</button>

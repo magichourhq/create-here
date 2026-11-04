@@ -1,7 +1,7 @@
 'use strict';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const workspace=$('#workspace'),sidebar=$('.sidebar'),handle=$('#sidebar-handle'),promptInput=$('#prompt'),form=$('#composer'),dock=$('#composer-dock'),generate=$('#generate-button');
-let attachments=[],running=false,timer=null,selectedTemplate=null,toastTimer,voiceTimer,recording=false;
+let attachments=[],running=false,planning=false,timer=null,selectedTemplate=null,toastTimer;
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function setTheme(theme){document.documentElement.dataset.theme=theme;const dark=theme==='dark';$('#theme-toggle').setAttribute('aria-pressed',String(dark));$('#theme-toggle').setAttribute('aria-label',`Switch to ${dark?'light':'dark'} theme`);$('#theme-label').textContent=dark?'Dark appearance':'Light appearance';$('meta[name="theme-color"]').content=dark?'#09090b':'#e4e4e7';try{localStorage.setItem('create-theme',theme)}catch{}}
@@ -54,7 +54,7 @@ workspace.addEventListener('pointerleave',resetCardMotion);
 attraction.forEach(state=>{state.card.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||running||reduceMotion||mobileLayout.matches)return;const r=state.card.getBoundingClientRect();state.targetX=Math.max(-1,Math.min(1,(e.clientX-r.left-r.width/2)/(r.width/2)))*15;state.targetY=Math.max(-1,Math.min(1,(e.clientY-r.top-r.height/2)/(r.height/2)))*12;requestCardFrame()});state.card.addEventListener('pointerleave',()=>{state.targetX=0;state.targetY=0;requestCardFrame()})});
 const recordText='CREATE • PLAY • REPEAT •';[...recordText].forEach((letter,i)=>{const s=document.createElement('span');s.textContent=letter;s.style.setProperty('--a',`${i*360/recordText.length-45}deg`);$('.record-type').append(s)});
 
-const presets={'Song':'Create an uplifting, warm indie song with a catchy melody and a relaxed summer feel.','Create video':'Create a cinematic video of a French bulldog in a red jacket walking beside a vivid blue building. Use a low camera angle, natural movement and soft daylight.','Photo edit':'Edit my photo with soft studio lighting and a warm neutral background. Keep the person recognisable and preserve natural skin texture.','Product photo':'Create a polished product photo of my AQUA coffee packaging on a soft pink backdrop, with gentle studio lighting and natural shadows. Preserve the original label and rich pink colours.','Voiceover':'Create a warm, natural voiceover: Every great idea begins with a little spark. What will you make today?','Animate image':'Animate this image with subtle, natural motion and a gentle camera push-in. Preserve its original style and composition.'};
+const presets={'Song':'Create an uplifting, warm indie instrumental with a catchy melody and a relaxed summer feel.','Create video':'Create a cinematic video of a French bulldog in a red jacket walking beside a vivid blue building. Use a low camera angle, natural movement and soft daylight.','Photo edit':'Edit my photo with soft studio lighting and a warm neutral background. Keep the person recognisable and preserve natural skin texture.','Product photo':'Create a polished product photo of my AQUA coffee packaging on a soft pink backdrop, with gentle studio lighting and natural shadows. Preserve the original label and rich pink colours.','Voiceover':'Write a warm, natural voiceover script: Every great idea begins with a little spark. What will you make today?','Animate image':'Animate this image with subtle, natural motion and a gentle camera push-in. Preserve its original style and composition.'};
 const templateImages={'Create video':'assets/home-create-video.png','Photo edit':'assets/home-edit-photo.png','Product photo':'assets/home-packaging.png','Animate image':'assets/home-animate-image.png'};
 const templateImageCache=new Map();
 let templateSelectionRevision=0,templateAttachmentLoading=false;
@@ -81,7 +81,7 @@ async function applyTemplate(name,copy=presets[name],preview=templateImages[name
     attachments.filter(item=>item.templatePreview).forEach(item=>{if(item.url)URL.revokeObjectURL(item.url)});
     attachments=retained;
     if(blob){
-      if(attachments.length>=12)toast('Remove an attachment to add the template image.');
+      if(attachments.length>=4)toast('Remove an attachment to add the template image.');
       else{const extension=preview.split('.').pop(),file=new File([blob],`${name.toLowerCase().replaceAll(' ','-')}.${extension}`,{type:blob.type||'image/png'});attachments.push({id:crypto.randomUUID(),file,url:URL.createObjectURL(file),templatePreview:true})}
     }
   }catch{if(revision===templateSelectionRevision)toast('The template image could not load. Please try again.')}finally{
@@ -95,7 +95,7 @@ function updatePrompt(){
   promptInput.style.height='34px';
   const targetHeight=Math.min(140,Math.max(34,promptInput.scrollHeight));
   promptInput.style.height=targetHeight+'px';
-  generate.disabled=templateAttachmentLoading||(!running&&!promptInput.value.trim()&&!attachments.length);
+  generate.disabled=running||planning||templateAttachmentLoading||(!promptInput.value.trim()&&!attachments.length);
   form.classList.toggle('long-prompt',targetHeight>74);
   if(!reduceMotion&&Math.abs(targetHeight-previousHeight)>.5){
     promptResizeAnimation=promptInput.animate([{height:previousHeight+'px'},{height:targetHeight+'px'}],{duration:320,easing:'cubic-bezier(.22,1,.36,1)'});
@@ -109,54 +109,8 @@ promptInput.addEventListener('scroll',updatePromptFade,{passive:true});new Resiz
 promptInput.addEventListener('input',updatePrompt);promptInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();form.requestSubmit()}if(e.key==='Escape')promptInput.blur()});
 function toast(text){clearTimeout(toastTimer);$('#toast').textContent=text;$('#toast').classList.add('visible');toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3000)}
 
-const menu=$('#mode-menu'),modeButton=$('#mode-button'),range=$('#mode-range'),modes=['Economy','Balanced','Max'];let mode=1;
-const descriptions=['Best for exploring ideas and quick drafts.<br>Uses <strong>15x fewer credits</strong> than Max.','Balance quality and cost.<br>Uses <strong>4.5x fewer credits</strong> than Max.','Best for your most ambitious ideas.<br>Highest quality, with every detail refined.'];
-function toggleMenu(open){menu.classList.toggle('open',open);menu.inert=!open;modeButton.setAttribute('aria-expanded',String(open));if(open)range.focus({preventScroll:true});}
-modeButton.addEventListener('click',()=>toggleMenu(!menu.classList.contains('open')));
-const modeTransitions=new WeakMap();
-function transitionModeCopy(element,html,resize=false){
-  const previous=modeTransitions.get(element);
-  const oldWidth=element.getBoundingClientRect().width;
-  const oldHTML=element.querySelector('.mode-copy-current')?.innerHTML??element.innerHTML;
-  if(previous){previous.animations.forEach(a=>a.cancel());previous.old.remove();}
-  element.innerHTML=html;
-  if(reduceMotion)return;
-  const newWidth=element.getBoundingClientRect().width;
-  const current=document.createElement('span');
-  current.className='mode-copy-current';current.innerHTML=html;
-  const old=document.createElement('span');
-  old.className='mode-copy-previous';old.innerHTML=oldHTML;old.setAttribute('aria-hidden','true');
-  old.style.width=oldWidth+'px';
-  element.replaceChildren(current,old);
-  const animations=[
-    old.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-3px)'}],{duration:160,easing:'ease-out',fill:'forwards'}),
-    current.animate([{opacity:0,transform:'translateY(3px)'},{opacity:1,transform:'translateY(0)'}],{duration:280,easing:'cubic-bezier(.22,1,.36,1)'})
-  ];
-  if(resize&&Math.abs(newWidth-oldWidth)>.5)animations.push(element.animate([{width:oldWidth+'px'},{width:newWidth+'px'}],{duration:320,easing:'cubic-bezier(.22,1,.36,1)'}));
-  const state={animations,old};modeTransitions.set(element,state);
-  Promise.all(animations.map(a=>a.finished)).then(()=>{if(modeTransitions.get(element)===state){old.remove();modeTransitions.delete(element);}}).catch(()=>{});
-}
-function setMode(value){
-  const nextMode=Number(value);
-  if(nextMode===mode)return;
-  mode=nextMode;range.value=String(mode);
-  const name=modes[mode];
-  transitionModeCopy($('#mode-name'),name,true);
-  transitionModeCopy($('#mode-title'),name,true);
-  transitionModeCopy($('#mode-description'),descriptions[mode]);
-  modeButton.setAttribute('aria-label','Generation mode: '+name);range.setAttribute('aria-valuetext',name);
-  const position=mode===0?'16px':mode===1?'50%':'calc(100% - 16px)';
-  const filledWidth=mode===0?'32px':mode===1?'calc(50% + 16px)':'100%';
-  $('#slider-fill').style.width=filledWidth;
-  $('.quality-slider').style.setProperty('--filled-width',filledWidth);
-  $('#slider-thumb').style.left=`calc(${position} - 14px)`;
-  $$('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.mode)===mode)));
-  $('.mode-icon').style.opacity=mode===0?'.5':'1';
-}
-range.addEventListener('input',()=>setMode(range.value));$$('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));document.addEventListener('pointerdown',e=>{if(!e.target.closest('.mode-wrapper'))toggleMenu(false)});document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(menu.classList.contains('open')){toggleMenu(false);modeButton.focus()}else if(sidebar.classList.contains('expanded'))setSidebar(false)}});
-
 $('#attach-button').addEventListener('click',()=>$('#file-input').click());$('#file-input').addEventListener('change',e=>{addFiles(e.target.files);e.target.value=''});
-function addFiles(files){if(running){toast('Your preview is being prepared. Add files when it finishes.');return;}for(const file of files){if(attachments.length>=12){toast('You can attach up to 12 files.');break}attachments.push({id:crypto.randomUUID(),file,url:file.type.startsWith('image/')?URL.createObjectURL(file):null})}renderFiles();}
+function addFiles(files){if(running||planning){toast('Wait for your current request to finish.');return;}for(const file of files){if(attachments.length>=4){toast('You can attach up to 4 files.');break}if(file.size>20*1024*1024){toast('Each file must be under 20 MB.');continue;}attachments.push({id:crypto.randomUUID(),file,url:file.type.startsWith('image/')?URL.createObjectURL(file):null})}renderFiles();}
 let attachmentRowAnimation;
 function revealAttachment(wrap,index){
   if(!wrap.isConnected)return;
@@ -236,7 +190,7 @@ function syncActionsMenu(){
   stackRevealAnimation?.cancel();
   if(active&&actionsLayout==='none')dock.style.setProperty('--resting-composer-width',before.width+'px');
   dock.style.setProperty('--actions-width',(multi?(stacked?508:492):398)+'px');dock.classList.toggle('has-multiple',multi);dock.classList.toggle('actions-open',active);
-  if(active){toggleMenu(false);if(document.activeElement===promptInput)promptInput.blur()}
+  if(active){if(document.activeElement===promptInput)promptInput.blur()}
   else if(actionsMenu.contains(document.activeElement))canvasViewport.focus({preventScroll:true});
   actionsLayout=nextLayout;
   const after=dock.getBoundingClientRect();
@@ -571,12 +525,12 @@ async function makeGeneration(request){
   card.type='button';card.className='result-card';card.setAttribute('aria-label',`Generation ${id}, generating${mobileLayout.matches?'':'. Drag to move'}`);
   image.alt=`Generation ${id}`;image.draggable=false;
   sheen.className='live-sheen';sheen.setAttribute('aria-hidden','true');
-  progress.className='progress-label';progress.textContent='0%';progress.setAttribute('role','progressbar');progress.setAttribute('aria-label',`Generation ${id} progress`);progress.setAttribute('aria-valuemin','0');progress.setAttribute('aria-valuemax','100');progress.setAttribute('aria-valuenow','0');
+  progress.className='progress-label';progress.textContent='Queued';progress.setAttribute('role','status');progress.setAttribute('aria-label',`Generation ${id} status`);
   card.append(image,sheen,progress);element.append(card);
   const item={id,element,card,image,progress,status:'pending',x:0,y:0,tx:0,ty:0,url:null,prompt:promptInput.value,live:{x:0,y:0,tx:0,ty:0,time:null,frame:0},rippleTimer:null};
   const source=attachments.find(a=>a.url);
   if(source){item.url=URL.createObjectURL(source.file);image.src=item.url}
-  else image.src=selectedTemplate==='Product photo'?'assets/home-packaging.png':selectedTemplate==='Create video'?'assets/home-create-video.png':selectedTemplate==='Animate image'?'assets/home-animate-image.png':selectedTemplate==='Song'||selectedTemplate==='Voiceover'?'assets/b1ae1.png':'assets/home-edit-photo.png';
+  else image.src='assets/b80ae.svg';
   try{await image.decode()}catch{}
   if(request!==generationRequest||!running){disposeGeneration(item);return null}
   item.references=attachments.filter(a=>a.url).map(a=>({url:URL.createObjectURL(a.file),name:a.file.name}));
@@ -642,11 +596,11 @@ function disposeGeneration(item){
   cancelAnimationFrame(item.live.frame);clearTimeout(item.rippleTimer);if(item.url)URL.revokeObjectURL(item.url);
 }
 function setGenerationLocked(locked){
-  syncGenerationCardActions(locked);promptInput.readOnly=locked;['#attach-button','#voice-button'].forEach(selector=>{$(selector).disabled=locked});modeButton.disabled=locked;$$('.attachment-remove').forEach(button=>button.disabled=locked);
+  generate.disabled=locked;syncGenerationCardActions(locked);promptInput.readOnly=locked;$('#attach-button').disabled=locked;$$('.attachment-remove').forEach(button=>button.disabled=locked);
 }
 function refreshGenerationView(){
   const visible=generationItems.length>0&&!showingHome;
-  workspace.classList.toggle('has-result',visible&&generationItems.some(item=>item.status==='complete'));
+  workspace.classList.toggle('has-result',visible);
   workspace.classList.toggle('generating',visible&&running);
   $('#generation').hidden=!visible;$('#template-stage').inert=visible;
   syncSessionFolder();syncGenerationCardActions();syncActionsMenu();
@@ -665,49 +619,20 @@ $('#session-button').addEventListener('click',()=>{
   closeGenerationViewer(true);
   showingHome=false;refreshGenerationView();if(mobileLayout.matches)setSidebar(false);
 });
-function stopGeneration(cancelled=false){
-  clearInterval(timer);timer=null;running=false;generationRequest++;
-  const item=currentGeneration;currentGeneration=null;
-  if(item){
-    resetLiveCard(item);item.card.querySelectorAll('.live-ripple').forEach(node=>node.remove());
-    if(cancelled){disposeGeneration(item);item.element.remove();selectedGenerations.delete(item);generationItems.splice(generationItems.indexOf(item),1);layoutGenerationItems()}
-    else{spendGenerationCredits();item.status='complete';item.element.classList.add('is-complete');item.progress.hidden=true;item.card.setAttribute('aria-label',`Generation ${item.id}${mobileLayout.matches?'':'. Drag to move'}`)}
-  }
-  workspace.classList.remove('generating');dock.classList.remove('processing');$('#processing-info').hidden=true;setGenerationLocked(false);
-  generate.setAttribute('aria-label','Generate');generate.dataset.tip='Generate';refreshGenerationView();updatePrompt();
-  if(cancelled)toast('Generation cancelled');
+function stopGeneration(){
+  clearTimeout(timer);timer=null;running=false;currentGeneration=null;
+  workspace.classList.remove('generating');dock.classList.remove('processing');
+  $('#processing-info').hidden=true;setGenerationLocked(false);
+  generate.setAttribute('aria-label','Generate');generate.dataset.tip='Generate';
+  refreshGenerationView();updatePrompt();
 }
-form.addEventListener('submit',async e=>{
-  e.preventDefault();if(running){stopGeneration(true);return}
-  if(templateAttachmentLoading)return;
-  if(!promptInput.value.trim()&&!attachments.length)return;
-  showingHome=false;
-  if(expandedStack)closeStackFocus();
-  toggleMenu(false);if(recording)stopVoice();
-  const first=generationItems.length===0;
-  running=true;$('#template-stage').inert=true;resetCardMotion();workspace.classList.add('generating');
-  if(mobileLayout.matches){promptInput.blur();if(first)window.scrollTo({top:0,behavior:'instant'})}
-  dock.classList.add('processing');$('#processing-info').hidden=false;$('#processing-text').textContent='Understanding your idea…';$('#generation').hidden=false;clearCanvasGesture();
-  const request=++generationRequest;setGenerationLocked(true);generate.disabled=false;generate.setAttribute('aria-label','Stop generation');generate.dataset.tip='Stop generation';
-  const item=await makeGeneration(request);if(!item)return;currentGeneration=item;requestAnimationFrame(()=>{if(!showingHome)revealGeneration(item,first)});
-  if(first)$('#workspace-name').textContent=selectedTemplate?({'Animate image':'Animating image','Create video':'Creating video','Photo edit':'Editing photo','Product photo':'Creating product photo','Song':'Creating song','Voiceover':'Creating voiceover'}[selectedTemplate]):'Your creations';
-  syncSessionFolder();
-  // This prototype keeps the simulated timing separate from the workspace and each card's state.
-  const started=performance.now(),duration=16000;
-  timer=setInterval(()=>{
-    if(currentGeneration!==item)return;
-    const progress=Math.min(100,Math.floor((performance.now()-started)/duration*100));item.progress.textContent=progress+'%';item.progress.setAttribute('aria-valuenow',String(progress));
-    const status=progress<15?'Understanding your idea…':progress<40?'Preparing your references…':progress<85?'Bringing your idea to life…':'Adding the finishing touches…';
-    if($('#processing-text').textContent!==status)$('#processing-text').textContent=status;
-    if(progress===100)stopGeneration();
-  },160);
-});
+form.addEventListener('submit',prepareCreation);
 function goHome(){
   closeProfileMenu({immediate:true});
   closeTemplates();
   closeGenerationViewer(true);
   if(expandedStack)closeStackFocus();
-  clearCanvasGesture();generationItems.forEach(item=>resetLiveCard(item));hideTooltip(true);toggleMenu(false);
+  clearCanvasGesture();generationItems.forEach(item=>resetLiveCard(item));hideTooltip(true);
   showingHome=true;selectGenerations([]);refreshGenerationView();resetCardMotion();
   if(mobileLayout.matches){setSidebar(false,{focus:false});window.scrollTo({top:0,behavior:'instant'})}
 }
@@ -781,7 +706,7 @@ $('#action-stack').addEventListener('click',()=>{
   refreshStacks();paintSelection();requestCanvasFrame();
 });
 async function selectionFiles(items){
-  return Promise.all(items.map(async item=>{const response=await fetch(item.image.src);if(!response.ok)throw new Error('Image unavailable');const blob=await response.blob(),extension=blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png';return new File([blob],`generation-${item.id}.${extension}`,{type:blob.type||'image/png'})}));
+  return Promise.all(items.map(async item=>{const response=await fetch(item.downloadUrl);if(!response.ok)throw new Error('Result unavailable');const blob=await response.blob(),extension=item.kind==='video'?'mp4':item.kind==='audio'?'mp3':item.kind==='text'?'txt':blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png';return new File([blob],`generation-${item.id}.${extension}`,{type:blob.type})}));
 }
 function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}
 async function zipSelection(files){
@@ -795,14 +720,15 @@ async function zipSelection(files){
   const size=directory.reduce((sum,entry)=>sum+entry.length,0),end=new Uint8Array(22),e=new DataView(end.buffer);e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,size,true);e.setUint32(16,offset,true);
   return new Blob([...parts,...directory,end],{type:'application/zip'});
 }
-async function downloadGenerations(items){const files=await selectionFiles(items);if(files.length===1)downloadBlob(files[0],files[0].name);else if(files.length)downloadBlob(await zipSelection(files),'generations.zip')}
+async function downloadGenerations(items){if(items.length===1){const link=document.createElement('a');link.href=items[0].downloadUrl;link.download='generation';link.click();return;}const files=await selectionFiles(items);if(files.length===1)downloadBlob(files[0],files[0].name);else if(files.length)downloadBlob(await zipSelection(files),'generations.zip')}
 $('#action-download').addEventListener('click',()=>downloadGenerations([...selectedGenerations]).catch(()=>toast('Could not download the selection. Try again.')));
 async function enhanceGenerations(items){
   if(!items.length||running)return;
-  try{
-    const files=await selectionFiles(items);attachments.forEach(item=>{if(item.url)URL.revokeObjectURL(item.url)});attachments=[];addFiles(files);
-    promptInput.value=`Enhance ${items.length>1?'these images':'this image'}: improve detail, clarity and lighting while preserving the original composition and identity.`;selectGenerations([]);updatePrompt();promptInput.focus({preventScroll:true});
-  }catch{toast('Could not prepare the selection. Try again.')}
+  referenceJobIds=items.map(item=>item.jobId);
+  $('#reference-summary').textContent=`Using ${items.length} selected ${items.length===1?'result':'results'} as input`;
+  $('#reference-summary').hidden=false;
+  promptInput.value='';promptInput.placeholder='Describe how you want to change the selected results…';
+  selectGenerations([]);updatePrompt();promptInput.focus({preventScroll:true});
 }
 $('#action-enhance').addEventListener('click',()=>enhanceGenerations([...selectedGenerations]));
 async function shareGenerations(items){
@@ -827,16 +753,14 @@ $('#action-delete').addEventListener('click',()=>deleteGenerations([...selectedG
 function deleteGenerations(items){
   if(!items.length)return;
   lastDeleted.forEach(({item})=>disposeGeneration(item));lastDeleted=[];
-  if(currentGeneration&&items.includes(currentGeneration))stopGeneration(true);
+  if(currentGeneration&&items.includes(currentGeneration)){toast('Wait for this creation to finish.');return;}
   lastDeleted=items.filter(item=>generationItems.includes(item)).map(item=>({item,index:generationItems.indexOf(item)})).sort((a,b)=>a.index-b.index);
   lastDeleted.forEach(({item})=>{item.element.remove();generationItems.splice(generationItems.indexOf(item),1)});
   selectGenerations([]);layoutGenerationItems();refreshStacks();refreshGenerationView();requestCanvasFrame();
   if(lastDeleted.length){toast(`Deleted ${lastDeleted.length} ${lastDeleted.length===1?'generation':'generations'}`);clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),8000);const undo=document.createElement('button');undo.type='button';undo.textContent='Undo';undo.addEventListener('click',undoGenerationDeletion);$('#toast').append(undo)}
 }
 
-function stopVoice(){clearTimeout(voiceTimer);recording=false;$('#voice-button').style.background='';$('#voice-button').setAttribute('aria-label','Preview voice input');}
-$('#voice-button').addEventListener('click',()=>{if(recording){stopVoice();return}recording=true;$('#voice-button').style.background='#2563eb25';$('#voice-button').setAttribute('aria-label','Stop demo voice input');toast('Voice input preview — try speaking your idea');voiceTimer=setTimeout(()=>{stopVoice();if(!promptInput.value)promptInput.value='Create a cinematic scene with warm evening light and a gentle camera movement.';updatePrompt();toast('Demo transcription added');},2400)});
-window.addEventListener('pagehide',()=>{generationItems.forEach(disposeGeneration);lastDeleted.forEach(({item})=>disposeGeneration(item));clearInterval(timer);clearTimeout(voiceTimer);attachments.forEach(a=>{if(a.url)URL.revokeObjectURL(a.url)})});
+window.addEventListener('pagehide',()=>{generationItems.forEach(disposeGeneration);lastDeleted.forEach(({item})=>disposeGeneration(item));clearInterval(timer);attachments.forEach(a=>{if(a.url)URL.revokeObjectURL(a.url)})});
 
 // Share the already-visible tooltip state across nearby triggers.
 let tooltipTarget=null,tooltipDelay=null,tooltipReset=null,tooltipWarm=false;
@@ -896,11 +820,11 @@ new ResizeObserver(([entry])=>{
 // Open the auth UI only from the explicitly designated account/navigation controls.
 const authDialog=$('#auth-dialog');let authMotion=null,authReturnFocus=null,authClosing=false,signedIn=false;
 function openAuth(trigger){
-  if(signedIn)return;
+  if(signedIn){window.open('https://magichour.ai/create','_blank','noopener');return;}
   if(authDialog.open)return;
   authReturnFocus=mobileLayout.matches&&sidebar.contains(trigger)?$('#mobile-menu-button'):trigger;
   if(mobileLayout.matches&&sidebar.classList.contains('expanded'))setSidebar(false,{focus:false});
-  hideTooltip(true);toggleMenu(false);clearCanvasGesture();
+  hideTooltip(true);clearCanvasGesture();
   $('#auth-feedback').hidden=true;authClosing=false;authDialog.classList.remove('is-closing');
   document.documentElement.classList.add('auth-modal-open');authDialog.showModal();
   if(!reduceMotion)authMotion=authDialog.animate([{opacity:0,transform:`translateY(${mobileLayout.matches?28:18}px) scale(.985)`},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:360,easing:'cubic-bezier(.22,1,.36,1)'});
@@ -918,45 +842,11 @@ let authBackdropDown=false;
 authDialog.addEventListener('pointerdown',e=>{const r=authDialog.getBoundingClientRect();authBackdropDown=e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom});
 authDialog.addEventListener('click',e=>{const r=authDialog.getBoundingClientRect();if(authBackdropDown&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))closeAuth();authBackdropDown=false});
 authDialog.addEventListener('keydown',e=>e.stopPropagation());
-// Prototype sign-in stays in memory and never contacts an identity provider.
-function fakeSignIn(){
-  if(signedIn)return;
-  signedIn=true;hideTooltip(true);
-  const enteredEmail=$('#auth-email').value.trim();profileEmail=enteredEmail||'Personal account';profileName=enteredEmail?enteredEmail.split('@')[0]:'Robin';
-  const profile=$('.bottom-nav [data-auth-trigger]');
-  profile.querySelector('.nav-icon').innerHTML='<span class="credit-profile" aria-hidden="true"><span class="credit-ring"><img src="assets/profile-credit-ring.svg" alt="" width="28" height="28"></span><span class="credit-avatar">R</span></span>';
-  profile.querySelector('.nav-label').textContent='My account';
-  updateCreditBalance(true);
-  const mobile=$('.mobile-signup');
-  mobile.hidden=true;
-  $('.top-actions').hidden=true;syncWorkspaceMore();
-  if(openedGeneration){workspace.classList.remove('viewer-guest');viewerInterface(true);viewerLayout()}
-  [profile,mobile].forEach(button=>{button.removeAttribute('aria-haspopup');button.removeAttribute('aria-controls')});
-  profile.setAttribute('aria-haspopup','dialog');profile.setAttribute('aria-controls','profile-menu');profile.setAttribute('aria-expanded','false');syncProfileMenu();
-  authReturnFocus=mobileLayout.matches?$('#mobile-menu-button'):profile;
-  closeAuth();
-}
-$$('[data-auth-provider]').forEach(button=>button.addEventListener('click',fakeSignIn));
-$('#auth-form').addEventListener('submit',e=>{e.preventDefault();if(e.currentTarget.reportValidity())fakeSignIn()});
-
-const CREDIT_ALLOWANCE=1000,GENERATION_CREDIT_COST=50;
-let creditBalance=CREDIT_ALLOWANCE;
-function updateCreditBalance(initial=false){
-  const profile=$('.bottom-nav [data-auth-trigger]'),ring=profile.querySelector('.credit-ring');
-  if(!ring)return;
-  const tip=`My account · ${creditBalance.toLocaleString('en-US')} credits`;
-  profile.dataset.tip=tip;profile.setAttribute('aria-label',tip);
-  const target=360*creditBalance/CREDIT_ALLOWANCE;
-  if(initial&&!reduceMotion){
-    ring.animate([{'--credit-sweep':'0deg'},{'--credit-sweep':target+'deg'}],{duration:1000,easing:'cubic-bezier(.22,1,.36,1)'});
-  }
-  ring.style.setProperty('--credit-sweep',target+'deg');syncProfileMenu();
-}
-function spendGenerationCredits(){
-  if(!signedIn)return;
-  creditBalance=Math.max(0,creditBalance-GENERATION_CREDIT_COST);updateCreditBalance();
-}
-
+const CREDIT_ALLOWANCE=1;
+let creditBalance=1;
+function updateCreditBalance(){syncProfileMenu()}
+function connectAccount(){window.location.assign('/api/auth/start')}
+$('#auth-connect').addEventListener('click',connectAccount);
 // Session actions stay separate from canvas pan/zoom and generation controls.
 let workspacePinned=false;
 const moreRoot=$('#workspace-more'),moreButton=$('#workspace-more-button'),moreMenu=$('#workspace-more-menu'),renameInput=$('#workspace-rename');
@@ -970,7 +860,7 @@ function closeWorkspaceMore(focus=false){
   if(focus)$('#workspace-more-button').focus({preventScroll:true});
 }
 function openWorkspaceMore(){
-  hideTooltip(true);toggleMenu(false);
+  hideTooltip(true);
   moreMenu.hidden=false;moreButton.setAttribute('aria-expanded','true');
   if(!reduceMotion)moreMenu.animate([{opacity:0,transform:'translateY(-5px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'});
 }
@@ -1020,7 +910,7 @@ const viewer=$('#generation-viewer'),viewerShell=$('#viewer-image-shell');
 function viewerLayout(){
   if(!openedGeneration)return;
   const r=viewer.getBoundingClientRect(),compact=r.width<950;
-  const nativeWidth=openedGeneration.image.naturalWidth||openedGeneration.width,nativeHeight=openedGeneration.image.naturalHeight||openedGeneration.height;
+  const nativeWidth=openedGeneration.kind==='text'?640:openedGeneration.image.naturalWidth||openedGeneration.width,nativeHeight=openedGeneration.kind==='text'?720:openedGeneration.image.naturalHeight||openedGeneration.height;
   const maxWidth=Math.max(80,Math.min(compact?960:820,r.width-(compact?40:580))),maxHeight=Math.max(80,compact?r.height*.52:Math.min(720,r.height*.66));
   const scale=Math.min(1,maxWidth/nativeWidth,maxHeight/nativeHeight),w=nativeWidth*scale,h=nativeHeight*scale;
   const compactTop=mobileLayout.matches&&!signedIn?120:80;
@@ -1040,11 +930,16 @@ function viewerInterface(away){
 function openGenerationViewer(item){
   if(openedGeneration||item.status!=='complete')return;
   const from=item.card.getBoundingClientRect();
-  clearCanvasGesture();hideTooltip(true);toggleMenu(false);closeWorkspaceMore();
+  clearCanvasGesture();hideTooltip(true);closeWorkspaceMore();
   openedGeneration=item;viewerClosing=false;resetViewerImageZoom();
   const image=$('#viewer-image');image.src=item.image.src;image.alt=`Generation ${item.id}`;
   $('#viewer-request').textContent=item.prompt;
-  $('#viewer-resolution').textContent=`${item.image.naturalWidth} × ${item.image.naturalHeight}`;
+  $('#viewer-image-zoom').querySelectorAll('video,audio,.writing-result').forEach(node=>node.remove());
+  image.hidden=item.kind!=='image';
+  if(item.kind==='text'){const writing=document.createElement('pre');writing.className='writing-result';writing.textContent=item.text;$('#viewer-image-zoom').append(writing);}
+  else if(image.hidden){const media=document.createElement(item.kind==='video'?'video':'audio');media.controls=true;media.src=item.downloadUrl+'?preview=1';media.setAttribute('aria-label','Generated '+item.kind);if(item.kind==='video')media.playsInline=true;$('#viewer-image-zoom').append(media);}
+
+  $('#viewer-resolution').textContent=item.kind==='video'?'Video':item.kind==='audio'?'Audio':item.kind==='text'?'Text document':`${item.image.naturalWidth} × ${item.image.naturalHeight}`;
   const assets=$('#viewer-assets');assets.replaceChildren();
   (item.references||[]).forEach(ref=>{const thumb=document.createElement('img');thumb.src=ref.url;thumb.alt=ref.name;assets.append(thumb)});
   $('#viewer-assets-section').hidden=!item.references?.length;
@@ -1080,6 +975,7 @@ async function closeGenerationViewer(immediate=false){
     try{await viewerMotion.finished}catch{}
   }
   if(openedGeneration!==item)return;
+  $('#viewer-image-zoom').querySelectorAll('video,audio').forEach(media=>media.pause());
   viewerMotion?.cancel();viewerMotion=null;viewerRadiusMotion?.cancel();viewerRadiusMotion=null;
   resetViewerImageZoom();item.element.classList.remove('viewer-source');viewer.hidden=true;viewer.classList.remove('is-closing');openedGeneration=null;viewerClosing=false;workspace.classList.remove('viewer-guest');
   viewerInterface(false);document.documentElement.classList.remove('generation-viewer-open');
@@ -1098,7 +994,7 @@ window.addEventListener('resize',()=>{if(openedGeneration&&!viewerClosing)viewer
 const viewerZoom={z:1,x:0,y:0,tz:1,tx:0,ty:0,frame:0,time:null};
 const viewerZoomPointers=new Map();
 let viewerZoomPinch=null,viewerSafariGesture=null,viewerImageMotion=null,viewerZoomReleaseTimer=0,viewerZoomReturn=null;
-function canZoomViewerImage(){return Boolean(openedGeneration&&!viewerClosing&&viewerMotion?.playState!=='running')}
+function canZoomViewerImage(){return Boolean(openedGeneration?.kind==='image'&&openedGeneration&&!viewerClosing&&viewerMotion?.playState!=='running')}
 function clampViewerImagePan(){
   if(viewerZoom.tz===1){viewerZoom.tx=0;viewerZoom.ty=0}
 }
@@ -1211,111 +1107,9 @@ viewerShell.addEventListener('keydown',e=>{
 });
 window.addEventListener('blur',()=>{stopViewerImageGesture();releaseViewerImageZoom()});
 
-// Pricing is a reversible view; the live session continues underneath it.
 const pricingPage=$('#pricing-page');
-const pricingPlans=[
-  {name:'Mini',monthly:7,discount:25,credits:5000,minutes:5,images:1000},
-  {name:'Pro',monthly:25,discount:50,credits:25000,minutes:17,images:5000},
-  {name:'Max',monthly:60,discount:30,credits:70000,minutes:49,images:14000}
-];
-let pricingOpen=false,pricingClosing=false,billingPeriod='monthly',pricingSnapshot=null;
-const pricingMotions=[];
-function pricingAmount(plan,period=billingPeriod){return Math.round(plan.monthly*(period==='yearly'?1-plan.discount/100:1)*100)/100}
-function pricingMoney(value){return '$'+Number(value).toLocaleString('en-US',{minimumFractionDigits:Number.isInteger(value)?0:2,maximumFractionDigits:2})}
-function animatePricing(node,frames,options){if(reduceMotion)return null;const motion=node.animate(frames,options);pricingMotions.push(motion);return motion}
-// Independent digit reels preserve the price baseline and never animate the button's scale.
-function rollPricingCopy(node,value,direction){
-  const previous=node.dataset.priceValue??node.textContent,beforeWidth=node.getBoundingClientRect().width;node.dataset.priceValue=value;
-  node.getAnimations({subtree:true}).forEach(animation=>animation.cancel());
-  node.replaceChildren();node.setAttribute('aria-label',value);
-  const oldChars=[...previous],newChars=[...value];
-  newChars.forEach((char,index)=>{
-    const drum=document.createElement('span');drum.className='price-drum';drum.setAttribute('aria-hidden','true');
-    const next=document.createElement('span');next.className='price-drum-value';next.textContent=char;drum.append(next);node.append(drum);
-    const old=oldChars[index]??'';
-    if(old===char||reduceMotion)return;
-    const outgoing=document.createElement('span');outgoing.className='price-drum-value price-drum-out';outgoing.textContent=old;drum.append(outgoing);
-    const options={duration:380,delay:index*16,easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'};
-    animatePricing(next,[{transform:`translateY(${direction*105}%)`,opacity:0},{transform:'translateY(0)',opacity:1}],options);
-    const motion=animatePricing(outgoing,[{transform:'translateY(0)',opacity:1},{transform:`translateY(${-direction*105}%)`,opacity:0}],{...options,fill:'forwards'});
-    motion?.finished.then(()=>outgoing.remove()).catch(()=>{});
-  });
-  const afterWidth=node.getBoundingClientRect().width;
-  animatePricing(node,[{width:beforeWidth+'px'},{width:afterWidth+'px'}],{duration:380,easing:'cubic-bezier(.22,1,.36,1)'});
-}
-function setBillingPeriod(period){
-  if(!['monthly','yearly'].includes(period)||period===billingPeriod)return;
-  billingPeriod=period;const yearly=period==='yearly';
-  $$('.billing-toggle [data-billing]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.billing===period)));
-  $('.billing-toggle').classList.toggle('is-yearly',yearly);
-  pricingPlans.forEach(plan=>{
-    const card=$(`.pricing-card[data-plan="${plan.name}"]`),main=card.querySelector('.pricing-card-main'),button=card.querySelector('[data-choose-plan]');
-    const before=main.getBoundingClientRect().height,buttonBefore=button.getBoundingClientRect().top,priceNode=card.querySelector('.plan-price'),priceLeft=priceNode.getBoundingClientRect().left;
-    main.getAnimations().forEach(animation=>animation.cancel());button.getAnimations().forEach(animation=>animation.cancel());
-    rollPricingCopy(card.querySelector('.plan-price'),pricingMoney(pricingAmount(plan)),yearly?1:-1);
-    card.querySelector('.plan-old-price').hidden=!yearly;
-    card.querySelector('.plan-discount').hidden=!yearly;
-    const note=card.querySelector('.plan-billing-note');note.hidden=!yearly;note.textContent=yearly?`${pricingMoney(pricingAmount(plan)*12)} billed yearly`:'';
-    button.setAttribute('aria-label',`Go to ${plan.name}, ${pricingMoney(pricingAmount(plan))} per month${yearly?`, ${pricingMoney(pricingAmount(plan)*12)} billed yearly`:''}`);
-    const factor=yearly?12:1,format=value=>value.toLocaleString('en-US').replaceAll(',',' ');
-    const credits=card.querySelector('.plan-credits');
-    credits.children[0].textContent=`${format(plan.credits*factor)} credits per ${yearly?'year':'month'}`;
-    credits.children[1].textContent=`~${format(plan.minutes*factor)} min of video or ${format(plan.images*factor)} images`;
-    const after=main.getBoundingClientRect().height,buttonAfter=button.getBoundingClientRect().top,priceAfter=priceNode.getBoundingClientRect().left;
-    const options={duration:380,easing:'cubic-bezier(.22,1,.36,1)'};
-    animatePricing(main,[{height:before+'px'},{height:after+'px'}],options);
-    animatePricing(priceNode,[{translate:`${priceLeft-priceAfter}px 0`},{translate:'0 0'}],options);
-    animatePricing(button,[{translate:`0 ${buttonBefore-buttonAfter}px`},{translate:'0 0'}],options);
-    if(yearly){
-      animatePricing(note,[{opacity:0},{opacity:1}],{duration:280,delay:80,fill:'backwards',easing:'ease-out'});
-      animatePricing(card.querySelector('.plan-discount'),[{opacity:0},{opacity:1}],{duration:260,easing:'ease-out'});
-    }
-  });
-}
-
-function openPricing(trigger){
-  closeProfileMenu({immediate:true});
-  if(pricingOpen||pricingClosing)return;
-  hideTooltip(true);toggleMenu(false);clearCanvasGesture();closeGenerationViewer(true);
-  if(mobileLayout.matches)setSidebar(false,{focus:false});
-  pricingSnapshot={trigger,scrollY:window.scrollY,title:document.title,sidebarInert:sidebar.inert,children:[...workspace.children].filter(node=>node!==pricingPage&&node.id!=='toast').map(node=>[node,node.inert])};
-  pricingSnapshot.children.forEach(([node])=>node.inert=true);sidebar.inert=true;
-  pricingOpen=true;pricingPage.hidden=false;document.body.classList.add('pricing-open');document.title='Pricing — Create.here';
-  pricingPage.scrollTop=0;
-  animatePricing(pricingPage,[{opacity:0,translate:`0 ${mobileLayout.matches?24:0}px`},{opacity:1,translate:'0 0'}],{duration:360,easing:'cubic-bezier(.22,1,.36,1)'});
-  [$('.pricing-heading'),$('.billing-toggle'),...$$('.pricing-card'),$('.pricing-contact')].forEach((node,index)=>animatePricing(node,[{opacity:0,translate:`0 ${index<2?12:20}px`,scale:'.985'},{opacity:1,translate:'0 0',scale:'1'}],{duration:460,delay:80+index*45,easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'}));
-  $('#pricing-close').focus({preventScroll:true});
-}
-async function closePricing(){
-  if(!pricingOpen||pricingClosing)return;pricingClosing=true;
-  pricingMotions.splice(0).forEach(motion=>motion.cancel());
-  const motion=animatePricing(pricingPage,[{opacity:1,translate:'0 0'},{opacity:0,translate:`0 ${mobileLayout.matches?20:8}px`}],{duration:220,easing:'ease-in'});
-  document.body.classList.remove('pricing-open');
-  if(motion)try{await motion.finished}catch{}
-  pricingPage.hidden=true;pricingOpen=false;pricingClosing=false;
-  pricingSnapshot.children.forEach(([node,inert])=>node.inert=inert);sidebar.inert=mobileLayout.matches?!sidebar.classList.contains('expanded'):pricingSnapshot.sidebarInert;
-  document.title=pricingSnapshot.title;window.scrollTo({top:pricingSnapshot.scrollY,behavior:'instant'});
-  const target=pricingSnapshot.trigger; if(target?.isConnected)target.focus({preventScroll:true});
-  pricingSnapshot=null;
-}
-$$('[data-pricing-trigger]').forEach(button=>button.addEventListener('click',()=>openPricing(button)));
-$('#pricing-close').addEventListener('click',closePricing);
-$$('[data-billing]').forEach(button=>button.addEventListener('click',()=>setBillingPeriod(button.dataset.billing)));
-$('.billing-toggle').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const period=e.key==='Home'?'monthly':e.key==='End'?'yearly':billingPeriod==='monthly'?'yearly':'monthly';setBillingPeriod(period);$(`[data-billing="${period}"]`).focus()});
-document.addEventListener('keydown',e=>{
-  if(!pricingOpen||e.target.closest('dialog'))return;
-  if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closePricing()}
-  if(e.key==='Tab'){
-    const buttons=[...pricingPage.querySelectorAll('button')].filter(button=>!button.disabled&&!button.hidden&&button.getClientRects().length),first=buttons[0],last=buttons.at(-1);
-    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
-  }
-},true);
-$$('[data-choose-plan]').forEach(button=>button.addEventListener('click',()=>{
-  const plan=pricingPlans.find(plan=>plan.name===button.dataset.choosePlan),amount=pricingAmount(plan);
-  toast(`${plan.name} · ${pricingMoney(amount)} / month${billingPeriod==='yearly'?` · ${pricingMoney(amount*12)} billed yearly`:''}. Checkout is not connected yet.`);
-}));
-$('#pricing-contact').addEventListener('click',()=>toast('Contact options will be available soon.'));
-
+function openPricing(){window.open('https://magichour.ai/pricing','_blank','noopener')}
+$$('[data-pricing-trigger]').forEach(button=>button.addEventListener('click',openPricing));
 // The library is another view of the same in-memory workspace.
 const templatesPage=$('#templates-page'),templatesGrid=$('#templates-grid');
 const templateLibrary=[
@@ -1382,7 +1176,7 @@ function setTemplateCategory(category){
 function openTemplates(){
   closeProfileMenu({immediate:true});
   if(templatesOpen)return;
-  hideTooltip(true);toggleMenu(false);clearCanvasGesture();closeGenerationViewer(true);resetCardMotion();
+  hideTooltip(true);clearCanvasGesture();closeGenerationViewer(true);resetCardMotion();
   if(mobileLayout.matches)setSidebar(false,{focus:false});
   const keep=new Set([templatesPage,$('.top-actions'),$('.mobile-header'),$('#toast'),pricingPage]);
   templatesSnapshot={title:document.title,scrollY:window.scrollY,children:[...workspace.children].filter(node=>!keep.has(node)).map(node=>[node,node.inert])};
@@ -1406,13 +1200,13 @@ window.addEventListener('blur',resetLibraryMagnet);templatesPage.addEventListene
 
 const profileTrigger=$('.bottom-nav [data-auth-trigger]'),profileMenu=$('#profile-menu');
 const profileGuestMarkup=profileTrigger.innerHTML;
-let profileMenuOpen=false,profileMenuMotion=null,profileMenuRevision=0,profileName='Robin',profileEmail='Personal account';
+let profileMenuOpen=false,profileMenuMotion=null,profileMenuRevision=0,profileName='Magic Hour account',profileEmail='Personal account';
 function syncProfileMenu(){
-  $('#profile-menu-email').textContent=profileEmail==='Personal account'?'testmail@gmail.com':profileEmail;
+  $('#profile-menu-email').textContent=profileEmail;
   $('#settings-profile-name').textContent=profileName;$('#settings-profile-email').textContent=profileEmail;
   $('#profile-credit-count').textContent=creditBalance.toLocaleString('en-US').replaceAll(',',' ');
-  $('#profile-credit-meter').setAttribute('aria-valuemax',String(CREDIT_ALLOWANCE));$('#profile-credit-meter').setAttribute('aria-valuenow',String(creditBalance));
-  $('#profile-credit-fill').style.width=(100*creditBalance/CREDIT_ALLOWANCE)+'%';
+  $('#profile-credit-meter').setAttribute('aria-valuemax',String(Math.max(CREDIT_ALLOWANCE,creditBalance)));$('#profile-credit-meter').setAttribute('aria-valuenow',String(creditBalance));
+  $('#profile-credit-fill').style.width=(creditBalance>0?100:0)+'%';
 }
 function positionProfileMenu(){
   if(!profileMenuOpen)return;
@@ -1423,7 +1217,7 @@ function positionProfileMenu(){
 }
 function openProfileMenu(){
   if(!signedIn||profileMenuOpen)return;
-  hideTooltip(true);toggleMenu(false);closeWorkspaceMore();syncProfileMenu();
+  hideTooltip(true);closeWorkspaceMore();syncProfileMenu();
   profileMenuRevision++;profileMenuMotion?.cancel();profileMenuOpen=true;profileMenu.hidden=false;profileMenu.inert=false;profileTrigger.setAttribute('aria-expanded','true');positionProfileMenu();
   if(!reduceMotion)profileMenuMotion=profileMenu.animate([{opacity:0,transform:'translate(-6px,8px) scale(.975)'},{opacity:1,transform:'translate(0,0) scale(1)'}],{duration:260,easing:'cubic-bezier(.22,1,.36,1)'});
   $('#profile-view-plans').focus({preventScroll:true});
@@ -1460,7 +1254,9 @@ $('#account-settings-close').addEventListener('click',closeAccountSettings);
 accountSettings.addEventListener('cancel',e=>{e.preventDefault();closeAccountSettings()});
 accountSettings.addEventListener('click',e=>{if(e.target!==accountSettings)return;const r=accountSettings.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeAccountSettings()});
 $$('[data-settings-theme]').forEach(button=>button.addEventListener('click',()=>{setTheme(button.dataset.settingsTheme);syncSettingsTheme()}));
-$('#profile-logout').addEventListener('click',()=>{
+$('#profile-logout').addEventListener('click',async()=>{
+  try{await api('/api/auth/logout',{})}catch(error){toast(error.message);return}
+
   closeProfileMenu({immediate:true});signedIn=false;hideTooltip(true);profileTrigger.innerHTML=profileGuestMarkup;
   profileTrigger.dataset.tip='Sign Up / Log In';profileTrigger.setAttribute('aria-label','Sign Up / Log In');profileTrigger.setAttribute('aria-haspopup','dialog');profileTrigger.setAttribute('aria-controls','auth-dialog');profileTrigger.removeAttribute('aria-expanded');
   $('.mobile-signup').hidden=false;$('.mobile-signup').setAttribute('aria-haspopup','dialog');$('.mobile-signup').setAttribute('aria-controls','auth-dialog');$('.top-actions').hidden=false;
@@ -1480,3 +1276,128 @@ homePreviewVideos.forEach(video=>homePreviewObserver.observe(video));
 new MutationObserver(syncHomePreviewVideos).observe(workspace,{attributes:true,attributeFilter:['class']});
 new MutationObserver(syncHomePreviewVideos).observe(document.body,{attributes:true,attributeFilter:['class']});
 document.addEventListener('visibilitychange',syncHomePreviewVideos);homePreviewMotion.addEventListener('change',syncHomePreviewVideos);
+
+let sessionState=null,pendingPlan=null,referenceJobIds=[],clarificationPrompt='';
+const requestMessage=$('#request-message'),planDialog=$('#plan-dialog');
+function showRequestMessage(text){requestMessage.textContent=text;requestMessage.hidden=!text;updatePrompt()}
+async function api(path,body){
+  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
+  const data=await response.json();
+  if(!response.ok){const error=new Error(typeof data.error==='string'?data.error:data.error?.message||'Your request could not be completed. Please try again.');error.status=response.status;throw error;}
+  return data;
+}
+function showTrial(){
+  const remaining=sessionState?.trial?.remaining??1;
+  $('#trial-status').textContent=remaining?'Your first creation is included. No sign-up needed.':'Your trial creation is ready. Connect Magic Hour to keep creating.';
+  creditBalance=remaining;updateCreditBalance();
+}
+async function uploadAttachment(item){
+  if(item.assetId)return item.assetId;
+  const file=item.file;
+  if(file.type.startsWith('image/')||/\.(pdf|doc|docx|ppt|pptx|txt)$/i.test(file.name)){
+    if(file.size>3000000)throw new Error('Images and documents must be under 3 MB.');
+    const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file)});
+    const result=await api('/api/documents',{name:file.name,mimeType:file.type,data});item.assetId=result.assetId;
+  }else{
+    const result=await api('/api/uploads',{name:file.name,type:file.type,size:file.size});
+    const response=await fetch(result.uploadUrl,{method:'PUT',headers:{'Content-Type':file.type},body:file});
+    if(!response.ok)throw new Error(`Could not upload ${file.name}. Please try again.`);
+    item.assetId=result.assetId;
+  }
+  return item.assetId;
+}
+async function prepareCreation(event){
+  event.preventDefault();
+  if(running||planning||templateAttachmentLoading)return;
+  const entered=promptInput.value.trim();if(!entered&&!attachments.length&&!referenceJobIds.length)return;
+  planning=true;generate.disabled=true;setGenerationLocked(true);
+  showRequestMessage('Understanding your request…');
+  try{
+    const assetIds=[];for(const item of attachments)assetIds.push(await uploadAttachment(item));
+    const prompt=clarificationPrompt?`${clarificationPrompt}\nAdditional information: ${entered}`:entered;
+    const response=await api('/api/plan',{prompt,assetIds,selectedJobIds:referenceJobIds});
+    if(response.question||response.clarification){
+      clarificationPrompt=prompt;showRequestMessage(response.question||response.clarification?.question||response.clarification);promptInput.value='';promptInput.focus();return;
+    }
+    pendingPlan=response.plan;
+    if(!pendingPlan?.id)throw new Error('We could not prepare that request. Please try a simpler description.');
+    $('#plan-summary').textContent=pendingPlan.summary;
+    $('#plan-cost').textContent=pendingPlan.costLabel||'1 included trial creation';
+    $('#plan-remaining').textContent='Nothing is generated until you confirm. Failed creations do not use your trial.';
+    showRequestMessage('');planDialog.showModal();$('#plan-confirm').focus();
+  }catch(error){showRequestMessage(error.message);if(error.status===402||error.status===403)openAuth(generate)}
+  finally{planning=false;setGenerationLocked(false);updatePrompt()}
+}
+$('#plan-close').addEventListener('click',()=>planDialog.close());
+$('#plan-change').addEventListener('click',()=>{planDialog.close();promptInput.focus()});
+$('#reference-summary').addEventListener('click',()=>{referenceJobIds=[];$('#reference-summary').hidden=true;promptInput.placeholder='Describe what you want to create or change…'});
+$('#plan-confirm').addEventListener('click',async()=>{
+  if(running||planning||!pendingPlan)return;
+  planning=true;$('#plan-confirm').disabled=true;
+  try{
+    const response=await api('/api/generate',{planId:pendingPlan.id});
+    pendingPlan=null;planDialog.close();clarificationPrompt='';
+    await displayJob(response.job);
+    attachments.forEach(item=>{if(item.url)URL.revokeObjectURL(item.url)});attachments=[];referenceJobIds=[];renderFiles();$('#reference-summary').hidden=true;
+    const result=await api('/api/session');sessionState=result;showTrial();
+  }catch(error){planDialog.close();showRequestMessage(error.message)}
+  finally{planning=false;$('#plan-confirm').disabled=false;if(!running){setGenerationLocked(false);updatePrompt()}}
+});
+async function displayJob(job){
+  if(generationItems.some(item=>item.jobId===job.id))return;
+  const first=generationItems.length===0;
+  running=true;showingHome=false;
+  const request=++generationRequest,item=await makeGeneration(request);if(!item){running=false;return;}
+  item.jobId=job.id;item.kind=job.kind;item.prompt=job.prompt||promptInput.value;
+  $('#workspace-name').textContent='Your creations';syncSessionFolder();
+  applyJob(item,job);requestAnimationFrame(()=>revealGeneration(item,first));
+  if(!['complete','error','canceled','submission_unknown'].includes(job.status)){
+    currentGeneration=item;workspace.classList.add('generating');dock.classList.add('processing');$('#processing-info').hidden=false;setGenerationLocked(true);pollJob(item);
+  }else{running=false;refreshGenerationView()}
+}
+function applyJob(item,job){
+  item.kind=job.kind;item.status=job.status==='complete'?'complete':['error','canceled','submission_unknown'].includes(job.status)?'error':'pending';
+  item.progress.textContent=job.status==='queued'?'Queued':job.status==='complete'?'Ready':item.status==='error'?'Could not create':'Creating…';
+  $('#processing-text').textContent=job.status==='queued'?'Your creation is queued…':'Bringing your idea to life…';
+  if(item.status==='complete'){
+    item.downloadUrl=`/api/download/${encodeURIComponent(job.id)}/0`;item.text=job.text||'';
+    item.progress.hidden=true;item.element.classList.add('is-complete');resetLiveCard(item);
+    if(job.kind==='image'){
+      item.image.onload=()=>{const size=normalizedCardSize(item.image.naturalWidth,item.image.naturalHeight);Object.assign(item,size);item.element.style.width=size.width+'px';item.element.style.height=size.height+'px';item.element.style.setProperty('--item-aspect',String(item.image.naturalWidth/item.image.naturalHeight));layoutGenerationItems();paintCanvas()};
+      item.image.src=item.downloadUrl+'?preview=1';
+    }else if(job.kind==='video'){
+      item.image.hidden=true;const video=document.createElement('video');video.src=item.downloadUrl+'?preview=1';video.muted=true;video.loop=true;video.playsInline=true;video.preload='metadata';video.setAttribute('aria-label','Generated video');item.card.prepend(video);video.play().catch(()=>{});
+    }else if(job.kind==='text'){item.image.hidden=true;const text=document.createElement('p');text.className='writing-preview';text.textContent=job.text;item.card.prepend(text);}
+    else{item.image.src='assets/b1ae1.png';item.progress.hidden=false;item.progress.textContent='Music · Play';}
+    item.card.setAttribute('aria-label',`Open generated ${job.kind}`);
+  }else if(item.status==='error'){
+    item.progress.textContent=['submitting','submission_unknown'].includes(job.status)?'Needs attention':'Could not create';item.element.classList.add('generation-failed');
+    showRequestMessage(typeof job.error==='string'?job.error:job.error?.message||'This creation failed. Your trial is still available.');
+  }
+  refreshGenerationView();syncGenerationCardActions();
+}
+async function pollJob(item){
+  try{
+    const {job}=await api(`/api/jobs/${encodeURIComponent(item.jobId)}`);applyJob(item,job);
+    if(['complete','error','canceled','submission_unknown'].includes(job.status)){
+      stopGeneration();sessionState=await api('/api/session');showTrial();
+      if(job.status==='complete')showRequestMessage('Your creation is ready. Open it to preview or download.');return;
+    }
+    showRequestMessage('');
+  }catch(error){showRequestMessage('We lost the connection. Your creation may still be running. We’ll check again.');}
+  timer=setTimeout(()=>pollJob(item),5000);
+}
+async function loadSession(){
+  try{
+    sessionState=await api('/api/session');if(sessionState.configured)showTrial();
+    if(sessionState.account?.connected){
+      signedIn=true;profileEmail=sessionState.account.email||'Connected Magic Hour account';profileName=profileEmail.split('@')[0];
+      $('.bottom-nav [data-auth-trigger] .nav-label').textContent='My account';$('.top-actions').hidden=true;$('.mobile-signup').hidden=true;
+      $('#profile-menu-email').textContent=profileEmail;syncProfileMenu();
+    }
+    const jobs=[...(sessionState.jobs||[])].sort((a,b)=>Number(!['complete','error','canceled','submission_unknown'].includes(a.status))-Number(!['complete','error','canceled','submission_unknown'].includes(b.status)));
+    for(const job of jobs)await displayJob(job);
+    if(sessionState.configured===false)showRequestMessage('Create.here is getting ready. Generation will be available soon.');
+  }catch(error){showRequestMessage('Create.here is getting ready. Generation will be available soon.');}
+}
+loadSession();

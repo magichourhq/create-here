@@ -685,3 +685,20 @@ body.templates-open .canvas,body.templates-open .composer-dock{visibility:hidden
 @keyframes voiceover-ripple{0%,79%{opacity:0;transform:scale(.55)}82%{opacity:.22;transform:scale(.68)}98%,100%{opacity:0;transform:scale(1.5)}}
 .workspace.generating .voiceover-mic,.workspace.has-result .voiceover-mic,.workspace.generating .voiceover-wave,.workspace.has-result .voiceover-wave,body.templates-open .voiceover-mic,body.templates-open .voiceover-wave,body.pricing-open .voiceover-mic,body.pricing-open .voiceover-wave{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.voiceover-mic,.voiceover-wave{animation:none}.voiceover-wave{display:none}}
+
+/* Service states share the prototype's composer and dialog surfaces. */
+.request-message{font:400 13px/1.5 Inter,sans-serif;margin:0 0 10px;color:var(--text);max-height:110px;overflow:auto}
+.reference-summary{font:400 13px/1.5 Inter,sans-serif;border:0;border-radius:10px;padding:8px 12px;cursor:pointer;background:var(--surface);color:inherit;text-align:left;margin-bottom:8px}
+#trial-status{font:400 11px/1.4 Inter,sans-serif;text-align:center;margin:10px 16px 0;color:var(--muted);max-width:100%}
+#plan-dialog .auth-content{gap:16px;display:flex;flex-direction:column}
+#plan-cost{font-weight:600;margin:0}
+#plan-remaining{font-size:13px;line-height:1.5;margin:0;color:var(--muted)}
+.result-card>video{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+#viewer-image-zoom>video{width:100%;height:100%;object-fit:contain}
+#viewer-image-zoom>audio{width:100%;margin:auto;align-self:center}
+#viewer-image-zoom:has(>audio){display:flex;align-items:center;min-height:100px}
+.generation-failed .live-sheen{display:none}
+.generation-failed .progress-label{max-width:90%;white-space:normal}
+
+.writing-preview{white-space:pre-wrap;text-align:left;padding:20px;font-size:14px;line-height:1.5;height:100%;overflow:hidden;margin:0;background:var(--surface)}
+.writing-result{white-space:pre-wrap;overflow:auto;width:100%;height:100%;margin:0;padding:24px;text-align:left;font:400 15px/1.6 Inter,sans-serif;user-select:text;background:var(--surface);color:var(--text)}
