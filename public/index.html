@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#e4e4e7">
+  <meta name="description" content="Start with an idea. Explore templates and bring something new to life with Create.here.">
+  <title>Create.here — What will you make today?</title>
+  <link rel="icon" href="assets/b80ae.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/inter-regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="assets/patrick-hand.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem('create-theme')||'light'}catch{}</script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+  <aside class="sidebar" id="sidebar" aria-label="Sidebar">
+    <button class="sidebar-close" id="sidebar-close" aria-label="Close menu" type="button">×</button>
+    <button type="button" class="brand" data-home-trigger aria-label="Go to home"><img src="assets/b80ae.svg" alt="Create.here" width="32" height="32"><span class="brand-name">create.here</span></button>
+    <nav class="main-nav" aria-label="Main navigation">
+      <button class="nav-button tip" data-tip="New workspace" aria-label="New workspace" data-auth-trigger aria-haspopup="dialog" aria-controls="auth-dialog"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="18.1667" height="18.1667" viewBox="0 0 18.1667 18.1667" fill="none" class="ui-icon motion-icon icon-new" aria-hidden="true" focusable="false">
+<g id="ui-new-elements">
+<path id="ui-new-Vector" d="M9.08333 5.75V9.08333M9.08333 9.08333V12.4167M9.08333 9.08333L12.4167 9.08333M9.08333 9.08333H5.75" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" data-icon-motion="plus" />
+<path id="ui-new-Ellipse 1334" d="M17.4167 9.08333C17.4167 4.48096 13.6857 0.75 9.08333 0.75C4.48096 0.75 0.75 4.48096 0.75 9.08333C0.75 13.6857 4.48096 17.4167 9.08333 17.4167C13.6857 17.4167 17.4167 13.6857 17.4167 9.08333Z" stroke-width="1.5" stroke="currentColor" />
+</g>
+</svg></span><span class="nav-label">New workspace</span></button>
+      <button class="nav-button tip" data-tip="Explore templates" aria-label="Explore templates" data-templates-trigger><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="18.1667" height="18.1667" viewBox="0 0 18.1667 18.1667" fill="none" class="ui-icon motion-icon icon-compass" aria-hidden="true" focusable="false">
+<g id="ui-compass-elements">
+<path id="ui-compass-Ellipse 1244" d="M17.4167 9.08333C17.4167 4.48096 13.6857 0.75 9.08333 0.75C4.48096 0.75 0.75 4.48096 0.75 9.08333C0.75 13.6857 4.48096 17.4167 9.08333 17.4167C13.6857 17.4167 17.4167 13.6857 17.4167 9.08333Z" stroke-width="1.5" stroke="currentColor" />
+<path id="ui-compass-Vector" d="M9.41781 5.9983L11.8511 5.18721C12.5896 4.94103 12.9589 4.81794 13.1538 5.01287C13.3487 5.20779 13.2256 5.57706 12.9795 6.31559L12.1684 8.74886C11.7489 10.0074 11.5391 10.6366 11.0879 11.0879C10.6366 11.5391 10.0074 11.7489 8.74886 12.1684L6.31559 12.9795C5.57706 13.2256 5.20779 13.3487 5.01287 13.1538C4.81794 12.9589 4.94103 12.5896 5.18721 11.8511L5.9983 9.41781C6.4178 8.15931 6.62755 7.53007 7.07881 7.07881C7.53006 6.62755 8.15931 6.4178 9.41781 5.9983Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" data-icon-motion="needle" />
+<path id="ui-compass-Vector_2" d="M9.08333 9.08333L9.07804 9.08863" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" />
+</g>
+</svg></span><span class="nav-label">Explore templates</span></button>
+      <button class="nav-button tip" data-tip="Pricing" aria-label="Pricing" data-pricing-trigger><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="18.1667" height="16.5" viewBox="0 0 18.1667 16.5" fill="none" class="ui-icon motion-icon icon-pricing" aria-hidden="true" focusable="false">
+<g id="ui-pricing-elements" data-icon-motion="tag-sway">
+<path id="ui-pricing-Rectangle 2087" d="M11.8748 13.4294L15.2027 9.41046C16.6149 7.705 17.321 6.85227 17.4048 5.92054C17.4421 5.5061 17.3911 5.08898 17.2547 4.69235C16.9481 3.80067 16.0537 3.11211 14.2648 1.73497C13.7249 1.31936 13.455 1.11156 13.1434 0.977727C13.0022 0.917048 12.8553 0.868015 12.7045 0.83121C12.372 0.750036 12.0194 0.750036 11.3143 0.750036H6.85241C6.14725 0.750036 5.79467 0.750036 5.46216 0.83121C5.31139 0.868015 5.16451 0.917048 5.02324 0.977727C4.71166 1.11156 4.44173 1.31936 3.90186 1.73497C2.11298 3.11211 1.21854 3.80067 0.911919 4.69235C0.775533 5.08898 0.724561 5.5061 0.761836 5.92054C0.845636 6.85227 1.55173 7.705 2.96392 9.41045L6.29182 13.4294C7.57285 14.9765 8.21337 15.75 9.08333 15.75C9.9533 15.75 10.5938 14.9765 11.8748 13.4294Z" stroke-width="1.5" stroke="currentColor" />
+<path id="ui-pricing-Vector 3224" d="M7.41667 5.33337H10.75" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" />
+</g>
+</svg></span><span class="nav-label">Pricing</span></button>
+    </nav>
+    <nav class="session-nav" aria-label="Recent workspaces" id="session-nav" hidden>
+      <div class="session-section-heading"><span>Recent</span></div>
+      <button type="button" id="session-button" class="nav-button tip" data-tip="Your creations" aria-controls="generation">
+        <span class="nav-icon"><span class="ui-icon folder-icon" aria-hidden="true" data-icon-motion="moon-sway"></span></span>
+        <span class="nav-label" id="session-name">Your creations</span>
+      </button>
+    </nav>
+    <div class="bottom-nav">
+      <button id="theme-toggle" class="nav-button tip" data-tip="Switch theme" aria-label="Switch to dark theme" aria-pressed="false"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="17" height="17" viewBox="0 0 17 17" fill="none" class="ui-icon motion-icon icon-sun" aria-hidden="true" focusable="false">
+<g id="ui-sun-elements">
+<path id="ui-sun-Ellipse 1199" d="M12.6667 8.5C12.6667 10.8012 10.8012 12.6667 8.5 12.6667C6.19881 12.6667 4.33333 10.8012 4.33333 8.5C4.33333 6.19881 6.19881 4.33333 8.5 4.33333C10.8012 4.33333 12.6667 6.19881 12.6667 8.5Z" stroke-width="1.5" stroke="currentColor" />
+<path id="ui-sun-Vector" d="M8.49626 1H8.50374M8.49675 16H8.50423M13.799 3.19666H13.8065M3.19507 13.8033H3.20256M3.19507 3.19706H3.20256M13.7985 13.8037H13.806M15.9925 8.50049H16M1 8.50049H1.00748" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" data-icon-motion="rays" />
+</g>
+</svg><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="17.3334" height="17.3334" viewBox="0 0 17.3334 17.3334" fill="none" class="ui-icon moon motion-icon icon-moon" aria-hidden="true" focusable="false">
+<g id="ui-moon-elements">
+<path data-icon-motion="moon-sway" id="ui-moon-Vector" d="M16.5833 10.3987C15.5836 10.9325 14.4418 11.2351 13.2293 11.2351C9.29093 11.2351 6.09827 8.04243 6.09827 4.10408C6.09827 2.89158 6.40088 1.74976 6.93469 0.75003C3.38971 1.58085 0.75 4.76264 0.75 8.56096C0.75 12.9916 4.34175 16.5834 8.7724 16.5834C12.5707 16.5834 15.7525 13.9437 16.5833 10.3987Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" />
+</g>
+</svg></span><span class="nav-label" id="theme-label">Light appearance</span></button>
+      <button class="nav-button tip" data-tip="Sign Up / Log In" aria-label="Sign Up / Log In" data-auth-trigger aria-haspopup="dialog" aria-controls="auth-dialog"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="17.916" height="17.916" viewBox="0 0 17.916 17.916" fill="none" class="ui-icon motion-icon icon-profile" aria-hidden="true" focusable="false">
+<g id="ui-profile-elements">
+<path id="ui-profile-Subtract" d="M8.95801 0C13.9056 1.71819e-07 17.916 4.01046 17.916 8.95801C17.916 13.9056 13.9056 17.916 8.95801 17.916C4.01046 17.916 1.71813e-07 13.9056 0 8.95801C0 4.01046 4.01046 0 8.95801 0ZM13.1592 12.6914C10.9363 10.2914 6.93649 10.4151 4.76074 12.6875L4.60449 12.8438C4.48351 12.9648 4.41758 13.1307 4.42188 13.3018C4.42622 13.4728 4.50103 13.6342 4.62793 13.749C5.77298 14.7845 7.29237 15.416 8.95801 15.416C10.6237 15.416 12.143 14.7845 13.2881 13.749C13.415 13.6342 13.4898 13.4728 13.4941 13.3018C13.4984 13.1306 13.4326 12.9648 13.3115 12.8438L13.1592 12.6914ZM8.95117 4.16602C7.4546 4.16602 6.23926 5.37839 6.23926 6.875C6.23943 8.37146 7.45471 9.58301 8.95117 9.58301C10.4476 9.58294 11.6619 8.37142 11.6621 6.875C11.6621 5.37843 10.4477 4.16609 8.95117 4.16602Z" fill="currentColor" />
+</g>
+</svg></span><span class="nav-label">Sign Up / Log In</span></button>
+      <footer class="sidebar-footer" inert>
+        <p>© 2026 create.here</p>
+        <p>Works with the <a href="https://magichour.ai/api" target="_blank" rel="noopener noreferrer">Magic Hour API</a></p>
+      </footer>
+    </div>
+    <button id="sidebar-handle" class="resize-handle" aria-label="Expand sidebar" aria-expanded="false"><span></span></button>
+  </aside>
+  <button class="sidebar-scrim" id="sidebar-scrim" aria-label="Close menu" tabindex="-1" type="button"></button>
+  <main class="workspace" id="workspace">
+    <header class="mobile-header" aria-label="Mobile navigation">
+      <button class="mobile-menu-button" id="mobile-menu-button" type="button" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false"><span class="nav-icon"><img src="assets/mobile-2f6a1.svg" alt="" width="14.8333" height="13.1667"></span></button>
+      <span class="mobile-page-name">Templates</span>
+      <button type="button" class="mobile-brand" data-home-trigger aria-label="Go to home"><img src="assets/mobile-fc99c.svg" alt="" width="20" height="20"><span>create.here</span></button>
+      <button class="pill accent mobile-signup" data-auth-trigger aria-haspopup="dialog" aria-controls="auth-dialog" type="button"><span class="button-label">Sign Up</span></button>
+    </header>
+
+    <section id="templates-page" class="templates-page" aria-labelledby="templates-title" hidden>
+      <header class="templates-heading"><h1 id="templates-title" tabindex="-1">Templates</h1></header>
+      <div class="templates-filters" role="group" aria-label="Template category">
+        <button type="button" data-template-filter="popular" aria-pressed="true"><span class="popular-icon"><img src="assets/templates-popular.svg" alt="" width="15.4169" height="17.9167"></span>Popular</button>
+        <button type="button" data-template-filter="video" aria-pressed="false">Video</button>
+        <button type="button" data-template-filter="image" aria-pressed="false">Image</button>
+        <button type="button" data-template-filter="audio" aria-pressed="false">Audio</button>
+      </div>
+      <div class="templates-grid" id="templates-grid" aria-label="Templates"></div>
+    </section>
+
+    <section id="pricing-page" hidden></section>
+    <header class="top-actions" aria-label="Account"><button class="pill" data-pricing-trigger><span class="button-label">Pricing</span></button><button class="pill" data-auth-trigger aria-haspopup="dialog" aria-controls="auth-dialog"><span class="button-label">Sign In</span></button><button class="pill accent" data-auth-trigger aria-haspopup="dialog" aria-controls="auth-dialog"><span class="button-label">Create free account</span></button></header>
+    <section class="canvas" aria-label="Start creating">
+      <div class="template-stage" id="template-stage">
+        <button class="float-card song" data-template="Song" data-depth="0.85" style="--x:-1.305px;--y:224.96px;--w:190px;--h:190px;--rotation:-1deg" aria-label="Use Instrumental template">
+          <span class="card-surface"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="record"><span class="record-disc"><img class="record-color" src="assets/b1ae1.png" alt=""><img class="record-center" src="assets/39387.svg" alt=""><img class="record-label" src="assets/e034b.svg" alt=""><span class="record-type" aria-hidden="true"></span></span></span><span class="card-label">Instrumental</span></span>
+        </button>
+        <button class="float-card cinematic create-video" data-template="Create video" data-depth="0.55" style="--x:244.952px;--y:33.114px;--w:391px;--h:220px;--rotation:-.5deg" aria-label="Use Create video template"><span class="card-surface photo"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><video class="card-image template-video" src="assets/home-create-video.mp4" poster="assets/home-create-video.png" autoplay loop muted playsinline preload="auto" aria-label="A French bulldog in a red jacket walking beside a blue building"></video><span class="shade"></span><span class="card-label">Create video</span></span></button>
+        <button class="float-card portrait photo-edit" data-template="Photo edit" data-depth="0.7" style="--x:705.743px;--y:68.903px;--w:220px;--h:220px;--rotation:1deg" aria-label="Use Photo edit template"><span class="card-surface photo"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><img class="card-image" src="assets/home-edit-photo.png" alt="Studio portrait of a man in a black T-shirt"><span class="shade"></span><span class="card-label">Photo edit</span></span></button>
+        <button class="float-card packaging" data-template="Product photo" data-depth="1.05" style="--x:986.644px;--y:185.96px;--w:190px;--h:190px;--rotation:-1deg" aria-label="Use Product photo template"><span class="card-surface photo"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><img class="card-image" src="assets/home-packaging.png" alt="AQUA coffee packaging in deep pink on a soft pink background"><span class="shade"></span><span class="card-label">Product photo</span></span></button>
+        <button class="float-card voiceover" data-template="Voiceover" data-depth="1.15" style="--x:111.883px;--y:459.643px;--w:160px;--h:160px;--rotation:1.5deg" aria-label="Use Voiceover script template"><span class="card-surface"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="voiceover-illustration" aria-hidden="true"><span class="voiceover-wave"></span><span class="voiceover-wave"></span><span class="voiceover-wave"></span><span class="voiceover-mic"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="12.1667" height="14.8333" viewBox="0 0 12.1667 14.8333" fill="none" class="voiceover-mic-icon" aria-hidden="true" focusable="false">
+<g>
+<path d="M9.41667 6.75V4.08333C9.41667 2.24238 7.92428 0.75 6.08333 0.75C4.24238 0.75 2.75 2.24238 2.75 4.08333V6.75C2.75 8.59095 4.24238 10.0833 6.08333 10.0833C7.92428 10.0833 9.41667 8.59095 9.41667 6.75Z" stroke-width="1.5" stroke="currentColor" />
+<path d="M11.4167 6.75C11.4167 9.69552 9.02885 12.0833 6.08333 12.0833M6.08333 12.0833C3.13781 12.0833 0.75 9.69552 0.75 6.75M6.08333 12.0833V14.0833M6.08333 14.0833H8.08333M6.08333 14.0833H4.08333" stroke-width="1.5" stroke-linecap="round" stroke="currentColor" />
+</g>
+</svg></span></span><span class="card-label">Voiceover script</span></span></button>
+        <button class="float-card animate" data-template="Animate image" data-depth="0.9" style="--x:878.234px;--y:441.69px;--w:284px;--h:160px;--rotation:1.5deg" aria-label="Use Animate image template"><span class="card-surface photo"><span class="card-action" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M7 7h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><video class="card-image template-video" src="assets/home-animate-image.mp4" poster="assets/home-animate-image.png" autoplay loop muted playsinline preload="auto" aria-label="Animated portrait of Salvador Dalí"></video><span class="shade"></span><span class="card-label">Animate image</span></span></button>
+        <div class="greeting"><h1>What will you make today?</h1><p>Pick a template or create something entirely your own.</p></div>
+      </div>
+      <section id="generation" class="generation" aria-label="Generations" hidden>
+        <button type="button" class="workspace-heading" id="close-result" aria-label="Back to templates"><span class="ui-icon folder-icon" aria-hidden="true"></span><span id="workspace-name">Your creation</span></button>
+        <input id="workspace-rename" class="workspace-rename" aria-label="Workspace name" maxlength="80" hidden>
+        <div class="workspace-more" id="workspace-more" hidden>
+          <button type="button" id="workspace-more-button" class="workspace-more-button tip" aria-label="More workspace actions" data-tip="More" aria-haspopup="menu" aria-expanded="false" aria-controls="workspace-more-menu"><span class="workspace-menu-icon"><img src="assets/workspace-c91de.svg" alt=""></span></button>
+          <div id="workspace-more-menu" class="workspace-more-menu" role="menu" aria-label="Workspace actions" hidden>
+            <button type="button" role="menuitem" id="workspace-menu-rename"><span class="workspace-menu-icon"><img src="assets/workspace-3e5d2.svg" alt=""></span>Rename</button>
+            <button type="button" role="menuitem" id="workspace-menu-pin"><span class="workspace-menu-icon"><img src="assets/workspace-bca7a.svg" alt=""></span><span>Pin</span></button>
+            <button type="button" role="menuitem" id="workspace-menu-delete" class="workspace-menu-delete"><span class="workspace-menu-icon"><img src="assets/workspace-c1ebf.svg" alt=""></span>Delete</button>
+          </div>
+        </div>
+        <div class="generation-center" id="canvas-viewport" role="region" aria-label="Workspace canvas" tabindex="0">
+        <div class="canvas-scene" id="canvas-scene"></div>
+        </div>
+        <div class="canvas-zoom" role="group" aria-label="Canvas zoom">
+          <button type="button" id="zoom-reset" aria-label="Reset zoom to 100 percent" title="Reset to 100%"><span id="zoom-value">100%</span></button>
+          <span class="zoom-divider" aria-hidden="true"></span>
+          <button type="button" id="zoom-fit" aria-label="Fit canvas content" title="Fit to view"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </section>
+    </section>
+    <div class="composer-dock" id="composer-dock">
+      <div class="actions-morph-surface" aria-hidden="true"></div>
+      <div class="generation-actions" id="generation-actions" role="toolbar" aria-label="Actions for selected generation" aria-hidden="true" inert>
+        <div class="stack-action-slot"><button type="button" class="selection-action" id="action-stack" tabindex="-1"><span class="action-icon action-icon-stack" aria-hidden="true"><svg aria-hidden="true" focusable="false" preserveAspectRatio="none" overflow="visible" style="display: block;" width="18.1668" height="18.1667" viewBox="0 0 18.1668 18.1667" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="action-stack-elements">
+<path id="action-stack-Vector" d="M12.9131 16.3325L10.8758 16.8719C8.98997 17.3711 8.04708 17.6208 7.3083 17.2119C6.56953 16.8031 6.32337 15.8954 5.83107 14.0801L4.61269 9.58742C4.12039 7.77211 3.87423 6.86445 4.30713 6.14541C4.74003 5.42637 5.68293 5.17674 7.56871 4.67749L10.9023 3.79494C12.7881 3.29569 13.731 3.04606 14.4698 3.45491C15.2086 3.86376 15.4547 4.77141 15.947 6.58673L17.1703 11.0973C17.3796 11.8693 17.4843 12.2552 17.3693 12.6182M12.9131 16.3325C13.5398 16.1666 13.5449 16.1639 14.0323 15.7457L16.3188 13.7838C16.9424 13.2486 17.2542 12.9811 17.3693 12.6182M12.9131 16.3325C12.9131 16.3325 13.4032 12.5049 14.5001 12.0001C15.7444 11.4274 17.3693 12.6182 17.3693 12.6182" stroke-width="1.5" stroke-linejoin="round" stroke="currentColor"/>
+<path id="action-stack-Vector_2" d="M13.2501 3.25106C13.1964 2.35656 13.0479 1.79349 12.6238 1.38975C11.9742 0.771352 10.9317 0.768272 8.84678 0.76211L5.1611 0.751219C3.07616 0.745058 2.0337 0.741977 1.38788 1.35655C0.742063 1.97112 0.745104 2.96334 0.751185 4.94778L0.766235 9.85902C0.772316 11.8435 0.775357 12.8357 1.42495 13.4541C2.07455 14.0725 3.11701 14.0756 5.20195 14.0817L5.7693 14.0834" stroke-width="1.5" stroke="currentColor"/>
+</g>
+</svg></span><span id="stack-action-label">Stack</span></button></div>
+        <button type="button" class="selection-action" id="action-enhance"><span class="action-icon action-icon-enhance" aria-hidden="true"><svg aria-hidden="true" focusable="false" preserveAspectRatio="none" overflow="visible" style="display: block;" width="16.5" height="18.1667" viewBox="0 0 16.5 18.1667" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="action-enhance-elements">
+<path id="action-enhance-Vector-7767" d="M8.06461 6.64513L13.4354 1.27436C13.6794 1.03032 13.8014 0.908303 13.9331 0.843077C14.1835 0.718975 14.4775 0.718975 14.728 0.843077C14.8596 0.908303 14.9816 1.03032 15.2256 1.27436C15.4697 1.51839 15.5917 1.64041 15.6569 1.77203C15.781 2.02247 15.781 2.3165 15.6569 2.56694C15.5917 2.69856 15.4697 2.82058 15.2256 3.06461L9.85487 8.43539L8.06461 10.2256C7.82058 10.4697 7.69856 10.5917 7.56693 10.6569C7.3165 10.781 7.02247 10.781 6.77203 10.6569C6.64041 10.5917 6.51839 10.4697 6.27435 10.2256C6.03032 9.98161 5.9083 9.85959 5.84308 9.72797C5.71897 9.47753 5.71897 9.1835 5.84308 8.93307C5.9083 8.80144 6.03032 8.67942 6.27435 8.43539L8.06461 6.64513ZM9.85487 8.43539L8.06461 6.64513" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor"/>
+<path id="action-enhance-Star-24" d="M12.4167 17.4167L12.6623 16.7528C12.9844 15.8824 13.1455 15.4471 13.463 15.1296C13.7805 14.8121 14.2157 14.6511 15.0862 14.329L15.75 14.0833L15.0862 13.8377C14.2157 13.5156 13.7805 13.3545 13.463 13.037C13.1455 12.7195 12.9844 12.2843 12.6623 11.4138L12.4167 10.75L12.171 11.4138C11.8489 12.2843 11.6879 12.7195 11.3704 13.037C11.0529 13.3545 10.6176 13.5156 9.74717 13.8377L9.08333 14.0833L9.74717 14.329C10.6176 14.6511 11.0529 14.8121 11.3704 15.1296C11.6879 15.4471 11.8489 15.8824 12.171 16.7528L12.4167 17.4167Z" stroke-width="1.5" stroke-linejoin="round" stroke="currentColor"/>
+<path id="action-enhance-Star-25" d="M3.25 15.75L3.43423 15.2521C3.67581 14.5993 3.7966 14.2728 4.03472 14.0347C4.27285 13.7966 4.59927 13.6758 5.25212 13.4342L5.75 13.25L5.25212 13.0658C4.59927 12.8242 4.27285 12.7034 4.03472 12.4653C3.7966 12.2272 3.67581 11.9007 3.43423 11.2479L3.25 10.75L3.06577 11.2479C2.82419 11.9007 2.7034 12.2272 2.46528 12.4653C2.22715 12.7034 1.90073 12.8242 1.24788 13.0658L0.75 13.25L1.24788 13.4342C1.90073 13.6758 2.22715 13.7966 2.46528 14.0347C2.7034 14.2728 2.82419 14.5993 3.06577 15.2521L3.25 15.75Z" stroke-width="1.5" stroke-linejoin="round" stroke="currentColor"/>
+</g>
+</svg></span><span>Enhance</span></button>
+        <button type="button" class="selection-action" id="action-share"><span class="action-icon action-icon-share" aria-hidden="true"><svg aria-hidden="true" focusable="false" preserveAspectRatio="none" overflow="visible" style="display: block;" width="16.5" height="15.6667" viewBox="0 0 16.5 15.6667" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="action-share-elements">
+<path id="action-share-Ellipse-1911" d="M15.75 3.25C15.75 4.63071 14.6307 5.75 13.25 5.75C11.8693 5.75 10.75 4.63071 10.75 3.25C10.75 1.86929 11.8693 0.75 13.25 0.75C14.6307 0.75 15.75 1.86929 15.75 3.25Z" stroke-width="1.5" stroke="currentColor"/>
+<path id="action-share-Ellipse-1948" d="M5.75 7.83333C5.75 9.21405 4.63071 10.3333 3.25 10.3333C1.86929 10.3333 0.75 9.21405 0.75 7.83333C0.75 6.45262 1.86929 5.33333 3.25 5.33333C4.63071 5.33333 5.75 6.45262 5.75 7.83333Z" stroke-width="1.5" stroke="currentColor"/>
+<path id="action-share-Ellipse-1949" d="M15.75 12.4167C15.75 13.7974 14.6307 14.9167 13.25 14.9167C11.8693 14.9167 10.75 13.7974 10.75 12.4167C10.75 11.036 11.8693 9.91667 13.25 9.91667C14.6307 9.91667 15.75 11.036 15.75 12.4167Z" stroke-width="1.5" stroke="currentColor"/>
+<path id="action-share-Vector" d="M10.9404 11.3746L5.52376 8.875M5.52376 6.79122L10.9404 4.29167" stroke-width="1.5" stroke="currentColor"/>
+</g>
+</svg></span><span>Share</span></button>
+        <button type="button" class="selection-action" id="action-download"><span class="action-icon action-icon-download" aria-hidden="true"><svg aria-hidden="true" focusable="false" preserveAspectRatio="none" overflow="visible" style="display: block;" width="18.1667" height="18.1667" viewBox="0 0 18.1667 18.1667" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="action-download-elements">
+<circle id="action-download-Ellipse-1569" cx="9.08333" cy="9.08333" r="8.33333" stroke="currentColor" stroke-width="1.5"/>
+<path id="action-download-Vector" d="M9.08333 12.4167L9.08333 5.75M11.1667 10.3333C10.7571 10.7547 9.66686 12.4167 9.08333 12.4167C8.49981 12.4167 7.40961 10.7547 7 10.3333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor"/>
+</g>
+</svg></span><span>Download</span></button>
+        <button type="button" class="selection-action selection-action-delete tip" id="action-delete" aria-label="Delete selected generations" data-tip="Delete"><span class="action-icon action-icon-delete" aria-hidden="true"><svg aria-hidden="true" focusable="false" preserveAspectRatio="none" overflow="visible" style="display: block;" width="16.5" height="18.1667" viewBox="0 0 16.5 18.1667" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="action-delete-elements">
+<path id="action-delete-Rectangle-980" d="M14.5 3.66667L13.9836 12.0209C13.8516 14.1554 13.7856 15.2226 13.2506 15.9899C12.9861 16.3692 12.6455 16.6894 12.2506 16.93C11.4518 17.4167 10.3825 17.4167 8.24395 17.4167C6.1026 17.4167 5.03192 17.4167 4.23254 16.9291C3.83733 16.6881 3.49666 16.3673 3.23224 15.9874C2.6974 15.2188 2.63288 14.1501 2.50384 12.0126L2 3.66667" stroke-width="1.5" stroke-linecap="round" stroke="currentColor"/>
+<g id="action-delete-Vector">
+<path d="M11.6298 3.66667H4.96077L5.46551 2.55938C5.83386 1.7513 6.01803 1.34725 6.34774 1.09431C6.42082 1.03825 6.49842 0.988342 6.57974 0.945101C6.94665 0.750002 7.39069 0.750002 8.27877 0.750002C9.1451 0.750002 9.57826 0.750002 9.93919 0.937253C10.0192 0.978787 10.0958 1.02675 10.1681 1.08067C10.494 1.32377 10.683 1.71355 11.0609 2.49311L11.6298 3.66667Z" fill="currentColor"/>
+<path d="M0.75 3.66667H4.96077M4.96077 3.66667H11.6298M4.96077 3.66667L5.46551 2.55938C5.83386 1.7513 6.01803 1.34725 6.34774 1.09431C6.42082 1.03825 6.49842 0.988342 6.57974 0.945101C6.94665 0.750002 7.39069 0.750002 8.27877 0.750002C9.1451 0.750002 9.57826 0.750002 9.93919 0.937253C10.0192 0.978787 10.0958 1.02675 10.1681 1.08067C10.494 1.32377 10.683 1.71355 11.0609 2.49311L11.6298 3.66667M11.6298 3.66667H15.75" stroke-width="1.5" stroke-linecap="round" stroke="currentColor"/>
+</g>
+<path id="action-delete-Line-5" d="M6.16667 12.8333L6.16667 7.83334" stroke-width="1.5" stroke-linecap="round" stroke="currentColor"/>
+<path id="action-delete-Line-6" d="M10.3333 12.8333V7.83334" stroke-width="1.5" stroke-linecap="round" stroke="currentColor"/>
+</g>
+</svg></span></button>
+      </div>
+      <div class="processing-info" id="processing-info" role="status" aria-live="polite" hidden><span class="status-dot"></span><span id="processing-text">Understanding your idea…</span></div>
+      <form class="composer" id="composer">
+        <p id="request-message" class="request-message" role="status" hidden></p><button type="button" id="reference-summary" class="reference-summary" hidden></button>
+        <div class="attachments" id="attachments" aria-label="Attached files" hidden></div>
+        <textarea id="prompt" rows="1" aria-label="Describe what you want to create or change" placeholder="Describe what you want to create or change…"></textarea>
+        <div class="composer-controls">
+          <button type="button" class="icon-button tip" id="attach-button" data-tip="Add file" aria-label="Add files"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="12.1667" height="12.1667" viewBox="0 0 12.1667 12.1667" fill="none" class="ui-icon motion-icon icon-attach" aria-hidden="true" focusable="false">
+<g id="ui-attach-elements">
+<path id="ui-attach-Vector 4048" d="M6.08333 0.75V11.4167" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" data-icon-motion="plus-vertical" />
+<path id="ui-attach-Vector 4049" d="M0.75 6.08333H11.4167" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" data-icon-motion="plus-horizontal" />
+</g>
+</svg></button>
+          <span class="controls-spacer"></span>
+          <button type="submit" class="generate-button tip" id="generate-button" data-tip="Generate" aria-label="Generate" disabled><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="13" height="13" viewBox="0 0 13 13" fill="none" class="generate-icon motion-icon icon-generate" aria-hidden="true" focusable="false">
+<g id="ui-generate-elements">
+<path id="ui-generate-Star 25 (Stroke)" d="M5.16667 10.3333C4.95745 10.3333 4.77035 10.2031 4.69774 10.0069L4.35384 9.07748C3.88702 7.81592 3.69732 7.33405 3.3483 6.98503C2.99928 6.63602 2.51741 6.44631 1.25585 5.97949L0.326482 5.63559C0.130264 5.56298 1.15505e-07 5.37589 1.33795e-07 5.16667C1.52086e-07 4.95745 0.130264 4.77035 0.326482 4.69774L1.25585 4.35384C2.51741 3.88702 2.99929 3.69732 3.3483 3.3483C3.69732 2.99928 3.88702 2.51741 4.35384 1.25585L4.69774 0.326482C4.77035 0.130263 4.95745 0 5.16667 0C5.37589 0 5.56299 0.130263 5.63559 0.326482L5.97949 1.25585C6.44631 2.51741 6.63602 2.99928 6.98503 3.3483C7.33405 3.69732 7.81592 3.88702 9.07748 4.35384L10.0069 4.69774C10.2031 4.77035 10.3333 4.95745 10.3333 5.16667C10.3333 5.37589 10.2031 5.56299 10.0069 5.63559L9.07748 5.97949C7.81592 6.44631 7.33405 6.63602 6.98503 6.98503C6.63602 7.33405 6.44631 7.81592 5.97949 9.07748L5.63559 10.0069C5.56299 10.2031 5.37589 10.3333 5.16667 10.3333Z" fill="currentColor" data-icon-motion="sparkle-main" />
+<path id="ui-generate-Star 27 (Stroke)" d="M10.5 13C10.2908 13 10.1037 12.8697 10.0311 12.6735L9.88369 12.2752C9.67455 11.71 9.61369 11.5763 9.51867 11.4813C9.42365 11.3863 9.28997 11.3254 8.72478 11.1163L8.32648 10.9689C8.13026 10.8963 8 10.7092 8 10.5C8 10.2908 8.13026 10.1037 8.32648 10.0311L8.72478 9.88369C9.28997 9.67455 9.42365 9.61369 9.51867 9.51867C9.61369 9.42365 9.67455 9.28997 9.88369 8.72478L10.0311 8.32648C10.1037 8.13026 10.2908 8 10.5 8C10.7092 8 10.8963 8.13026 10.9689 8.32648L11.1163 8.72478C11.3254 9.28997 11.3863 9.42365 11.4813 9.51867C11.5763 9.61369 11.71 9.67455 12.2752 9.88369L12.6735 10.0311C12.8697 10.1037 13 10.2908 13 10.5C13 10.7092 12.8697 10.8963 12.6735 10.9689L12.2752 11.1163C11.71 11.3254 11.5763 11.3863 11.4813 11.4813C11.3863 11.5763 11.3254 11.71 11.1163 12.2752L10.9689 12.6735C10.8963 12.8697 10.7092 13 10.5 13Z" fill="currentColor" data-icon-motion="sparkle-small" />
+</g>
+</svg><span class="spinner"></span><span class="stop-square"></span></button>
+        </div>
+      <p id="trial-status" role="status">Your first creation is included. No sign-up needed.</p>
+      </form>
+      <input type="file" id="file-input" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.ppt,.pptx,.txt" multiple hidden>
+    </div>
+    <div id="drop-overlay" class="drop-overlay" role="status" hidden><svg class="drop-border" aria-hidden="true" fill="none"><rect x=".5" y=".5" rx="12" stroke="currentColor" stroke-width="1" stroke-dasharray="3 4"/></svg><div class="drop-content"><span class="drop-symbol" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 16V4m-5 5 5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h2>Drop your files here</h2><p>Images, video, audio or documents</p></div></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <dialog class="selection-share-dialog" id="selection-share-dialog" aria-labelledby="selection-share-title">
+      <div class="selection-share-header"><h2 id="selection-share-title">Share selection</h2><button type="button" id="share-close" aria-label="Close share dialog">×</button></div>
+      <div class="selection-share-preview" id="selection-share-preview"></div>
+      <div class="selection-share-buttons"><button type="button" id="share-copy">Copy prompt</button><button type="button" id="share-download">Download</button></div>
+    </dialog>
+    <section class="generation-viewer" id="generation-viewer" aria-label="Generation preview" hidden>
+      <button type="button" class="viewer-back" id="viewer-back"><img src="assets/viewer-back.svg" alt="">Back</button>
+      <div class="viewer-image-shell" id="viewer-image-shell" tabindex="0" role="group" aria-label="Image preview. Pinch to zoom, drag to pan. Use plus and minus to zoom, zero to reset."><div class="viewer-image-zoom" id="viewer-image-zoom"><img id="viewer-image" alt=""></div></div>
+      <aside class="viewer-details" id="viewer-details" aria-label="Generation details">
+        <div><h2>Request</h2><p id="viewer-request"></p></div>
+        <div><h2>Resolution</h2><p id="viewer-resolution"></p></div>
+        <div id="viewer-assets-section"><h2>Assets</h2><div id="viewer-assets"></div></div>
+      </aside>
+      <div class="viewer-actions generation-actions" role="toolbar" aria-label="Generation actions"></div>
+    </section>
+  </main>
+  <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-title" aria-describedby="auth-description">
+    <button type="button" class="auth-close" id="auth-close" aria-label="Close authentication" autofocus><span class="auth-icon"><img src="assets/auth-c2321.svg" alt=""></span></button>
+    <div class="auth-heading">
+      <h2 id="auth-title">Let’s make something</h2>
+      <p id="auth-description">Connect your Magic Hour account. Your trial results stay in this workspace. Continue creating with your account on Magic Hour.</p>
+    </div>
+    <div class="auth-content"><button type="button" class="auth-continue" id="auth-connect">Continue with Magic Hour</button></div>
+    <p id="auth-feedback" class="auth-feedback" role="status" hidden></p>
+  </dialog>
+
+  <dialog id="plan-dialog" class="auth-dialog" aria-labelledby="plan-title">
+    <button type="button" class="auth-close" id="plan-close" aria-label="Close creation plan">×</button>
+    <div class="auth-heading"><h2 id="plan-title">Here’s the plan</h2><p id="plan-summary"></p></div>
+    <div class="auth-content"><p id="plan-cost"></p><p id="plan-remaining"></p><button type="button" class="auth-continue" id="plan-confirm">Create it</button><button type="button" class="reference-summary" id="plan-change">Change my request</button></div>
+  </dialog>
+  <section id="profile-menu" class="profile-menu" role="dialog" aria-modal="false" aria-label="Account menu" hidden>
+    <div class="profile-menu-account">
+      <header class="profile-menu-header">
+        <span class="profile-menu-avatar" aria-hidden="true">R</span>
+        <div class="profile-menu-identity"><p id="profile-menu-email">Magic Hour account</p><span>Magic Hour account</span></div>
+      </header>
+      <div class="profile-menu-balance">
+        <div class="profile-balance-heading"><span>Included creations</span><span class="profile-balance-left"><span id="profile-credit-count">1 000</span> left</span></div>
+        <div class="profile-balance-track" id="profile-credit-meter" role="meter" aria-label="Available credits" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="1000"><span id="profile-credit-fill"></span></div>
+      </div>
+      <button type="button" id="profile-view-plans" class="profile-view-plans">Upgrade</button>
+    </div>
+    <div class="profile-menu-actions">
+      <button type="button" id="profile-settings"><span class="profile-menu-icon" aria-hidden="true"><img class="profile-icon-light" src="assets/profile-settings.svg" alt=""><img class="profile-icon-dark" src="assets/profile-settings-dark.svg" alt=""></span>Settings</button>
+      <button type="button" id="profile-logout" class="profile-logout"><span class="profile-menu-icon" aria-hidden="true"><img src="assets/profile-logout.svg" alt=""></span>Log out</button>
+    </div>
+  </section>
+  <dialog id="account-settings" class="account-settings" aria-labelledby="account-settings-title">
+    <button type="button" id="account-settings-close" class="account-settings-close" aria-label="Close settings"><img src="assets/pricing-close.svg" alt="" width="16" height="16"></button>
+    <h2 id="account-settings-title">Settings</h2>
+    <div class="account-settings-profile"><span class="profile-menu-avatar" aria-hidden="true">R</span><div><p id="settings-profile-name">Robin</p><span id="settings-profile-email">Personal account</span></div></div>
+    <div class="settings-appearance"><p>Appearance</p><div role="group" aria-label="Appearance"><button type="button" data-settings-theme="light">Light</button><button type="button" data-settings-theme="dark">Dark</button></div></div>
+  </dialog>
+</body>
+</html>
