@@ -42,32 +42,33 @@ export async function rateLimit(sid, limit = 20) {
   const result = await redis("EVAL", "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],60) end; return n", 1, key("rate", sid));
   if (result > limit) throw new HttpError(429, "Please wait a minute before trying again.");
 }
-export async function trial(sid) {
+export async function trial(sid, accountId) {
   const [used, reserved] = await redis("HMGET", key("session", sid), "used", "reserved");
-  return { remaining: Number(used || 0) >= 1 ? 0 : 1, reserved: Boolean(reserved) };
+  const pending = accountId ? await redis("HGET", key("session", `${sid}:${accountId}`), "reserved") : reserved;
+  return { remaining: Number(used || 0) >= 1 ? 0 : 1, reserved: Boolean(pending) };
 }
 export async function reserve(sid, plan, job) {
   const script = `local p=redis.call('GET',KEYS[1]); if not p then return {'missing'} end
 local plan=cjson.decode(p); if plan.sid~=ARGV[1] then return {'missing'} end
 if plan.jobId then return {'existing',plan.jobId} end
-if tonumber(redis.call('HGET',KEYS[2],'used') or '0')>=1 then return {'exhausted'} end
+if not plan.accountId and tonumber(redis.call('HGET',KEYS[2],'used') or '0')>=1 then return {'exhausted'} end
 local pending=redis.call('HGET',KEYS[2],'reserved'); if pending then return {'busy',pending} end
 redis.call('HSET',KEYS[2],'reserved',ARGV[2]); redis.call('EXPIRE',KEYS[2],2592000)
 redis.call('SET',KEYS[3],ARGV[3],'EX',2592000)
 plan.jobId=ARGV[2]; redis.call('SET',KEYS[1],cjson.encode(plan),'EX',2592000)
 redis.call('LPUSH',KEYS[4],ARGV[2]); redis.call('LTRIM',KEYS[4],0,49); redis.call('EXPIRE',KEYS[4],2592000)
 return {'created',ARGV[2]}`;
-  return redis("EVAL", script, 4, key("plan", plan.id), key("session", sid), key("job", job.id), key("jobs", sid), sid, job.id, JSON.stringify(job));
+  return redis("EVAL", script, 4, key("plan", plan.id), key("session", plan.accountId ? `${sid}:${plan.accountId}` : sid), key("job", job.id), key("jobs", sid), sid, job.id, JSON.stringify(job));
 }
 export async function settle(job) {
   const script = `local raw=redis.call('GET',KEYS[1]); if not raw then return nil end
 local prior=cjson.decode(raw); if prior.status=='complete' or prior.status=='error' or prior.status=='canceled' then return raw end
 local job=cjson.decode(ARGV[1]); redis.call('SET',KEYS[1],ARGV[1],'EX',2592000)
-if job.status=='complete' then redis.call('HSET',KEYS[2],'used',1) end
+if job.status=='complete' and not job.accountId then redis.call('HSET',KEYS[2],'used',1) end
 if job.status=='complete' or job.status=='error' or job.status=='canceled' then
  if redis.call('HGET',KEYS[2],'reserved')==job.id then redis.call('HDEL',KEYS[2],'reserved') end
 end
 return ARGV[1]`;
-  const value = await redis("EVAL", script, 2, key("job", job.id), key("session", job.sid), JSON.stringify(job));
+  const value = await redis("EVAL", script, 2, key("job", job.id), key("session", job.accountId ? `${job.sid}:${job.accountId}` : job.sid), JSON.stringify(job));
   return value ? JSON.parse(value) : job;
 }

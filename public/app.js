@@ -1161,8 +1161,17 @@ async function api(path,body){
 }
 function showTrial(){
   const remaining=sessionState?.trial?.remaining??1;
-  $('#trial-status').textContent=remaining?'Your first creation is included. No sign-up needed.':'Your included creation is used. Continue creating on Magic Hour.';
+  const account=sessionState?.account,connected=Boolean(account?.connected);
+  $('#trial-status').textContent=connected?(account.credits===null?'Magic Hour connected. Credit balance is temporarily unavailable.':`${account.credits.toLocaleString()} Magic Hour credits. Keep creating here.`):remaining?'Your first creation is included. No sign-up needed.':'Your included creation is used. Sign in to keep creating here.';
+  $('#auth-title').textContent=connected?'Magic Hour connected':'Keep creating here';
+  $('#auth-description').textContent=connected?'New media creations use your Magic Hour credits. Writing is included. Your results stay in this workspace.':'Sign in or create a Magic Hour account in the sign-in tab, then return to this workspace. New media creations use your Magic Hour credits. Your existing results stay here.';
+  $('#account-summary').hidden=!connected;$('#account-summary').textContent=connected?(account.email||'Your Magic Hour account'):'';
+  $('#auth-connect').hidden=connected;$('#auth-disconnect').hidden=!connected;
+  $$('.top-actions [data-auth-trigger],.mobile-signup').forEach(button=>button.hidden=connected);
+  const trigger=$('.bottom-nav [data-auth-trigger]');trigger.querySelector('.nav-label').textContent=connected?'My account':'Sign Up / Log In';trigger.setAttribute('aria-label',connected?'My account':'Sign Up / Log In');trigger.dataset.tip=connected?'My account':'Sign Up / Log In';
 }
+$('#auth-disconnect').addEventListener('click',async()=>{try{await api('/api/auth/logout',{});location.reload()}catch(error){toast(error.message)}});
+window.addEventListener('focus',()=>{if(sessionState?.configured)loadSession()});
 async function uploadAttachment(item){
   if(item.assetId)return item.assetId;
   const file=item.file;
@@ -1195,9 +1204,9 @@ async function prepareCreation(event){
     if(!pendingPlan?.id)throw new Error('We could not prepare that request. Please try a simpler description.');
     $('#plan-summary').textContent=pendingPlan.summary;
     $('#plan-cost').textContent=pendingPlan.costLabel||'1 included trial creation';
-    $('#plan-remaining').textContent='Nothing is generated until you confirm. Failed creations do not use your trial.';
+    $('#plan-remaining').textContent=sessionState?.account?.connected?'Nothing is generated until you confirm. Media charges use your connected Magic Hour account; writing uses the app’s OpenAI service.':'Nothing is generated until you confirm. Failed creations do not use your trial.';
     showRequestMessage('');planDialog.showModal();$('#plan-confirm').focus();
-  }catch(error){showRequestMessage(error.message);if(error.status===402||error.status===403)openAuth(generate)}
+  }catch(error){showRequestMessage(error.message);if(error.status===401){await loadSession()}if([401,402,403].includes(error.status))openAuth(generate)}
   finally{planning=false;setGenerationLocked(false);updatePrompt()}
 }
 $('#plan-close').addEventListener('click',()=>planDialog.close());
@@ -1211,8 +1220,8 @@ $('#plan-confirm').addEventListener('click',async()=>{
     pendingPlan=null;planDialog.close();clarificationPrompt='';
     await displayJob(response.job);
     attachments.forEach(item=>{if(item.url)URL.revokeObjectURL(item.url)});attachments=[];referenceJobIds=[];renderFiles();$('#reference-summary').hidden=true;
-    const result=await api('/api/session');sessionState=result;showTrial();
-  }catch(error){planDialog.close();showRequestMessage(error.message)}
+    await loadSession();
+  }catch(error){planDialog.close();showRequestMessage(error.message);if(error.status===401){await loadSession();openAuth(generate)}}
   finally{planning=false;$('#plan-confirm').disabled=false;if(!running){setGenerationLocked(false);updatePrompt()}}
 });
 async function displayJob(job){
@@ -1252,7 +1261,7 @@ async function pollJob(item){
   try{
     const {job}=await api(`/api/jobs/${encodeURIComponent(item.jobId)}`);applyJob(item,job);
     if(['complete','error','canceled','submission_unknown'].includes(job.status)){
-      stopGeneration();sessionState=await api('/api/session');showTrial();
+      stopGeneration();await loadSession();
       if(job.status==='complete')showRequestMessage('Your creation is ready. Open it to preview or download.');return;
     }
     showRequestMessage('');
@@ -1261,7 +1270,11 @@ async function pollJob(item){
 }
 async function loadSession(){
   try{
-    sessionState=await api('/api/session');if(sessionState.configured)showTrial();
+    const previousAccountId=sessionState?.account?.id;
+    sessionState=await api('/api/session');
+    if(previousAccountId&&previousAccountId!==sessionState.account?.id){location.reload();return}
+    if(sessionState.configured)showTrial();
+    if(!previousAccountId&&sessionState.account?.connected&&authDialog.open){await closeAuth();showRequestMessage('Magic Hour connected. Keep creating here.')}
     const jobs=[...(sessionState.jobs||[])].sort((a,b)=>Number(!['complete','error','canceled','submission_unknown'].includes(a.status))-Number(!['complete','error','canceled','submission_unknown'].includes(b.status)));
     for(const job of jobs)await displayJob(job);
     if(sessionState.configured===false)showRequestMessage('Create.here is getting ready. Generation will be available soon.');

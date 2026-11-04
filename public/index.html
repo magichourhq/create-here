@@ -207,10 +207,11 @@
   <dialog id="auth-dialog" class="auth-dialog" aria-labelledby="auth-title" aria-describedby="auth-description">
     <button type="button" class="auth-close" id="auth-close" aria-label="Close authentication" autofocus><span class="auth-icon"><img src="assets/auth-c2321.svg" alt=""></span></button>
     <div class="auth-heading">
-      <h2 id="auth-title">Continue creating on Magic Hour</h2>
-      <p id="auth-description">Create an account or sign in to keep creating on Magic Hour. It opens in a new tab. Your trial result stays here for preview and download in this browser.</p>
+      <h2 id="auth-title">Keep creating here</h2>
+      <p id="auth-description">Sign in or create a Magic Hour account in the sign-in tab, then return to this workspace. New media creations use your Magic Hour credits. Your existing results stay here.</p>
+      <p id="account-summary" hidden></p>
     </div>
-    <div class="auth-content auth-providers"><a class="auth-continue" href="https://magichour.ai/sign-up?callbackUrl=%2Fcreate" target="_blank" rel="noopener">Create a Magic Hour account</a><a class="auth-provider" href="https://magichour.ai/sign-in?callbackUrl=%2Fcreate" target="_blank" rel="noopener">Sign in to Magic Hour</a></div>
+    <div class="auth-content auth-providers"><a id="auth-connect" class="auth-continue" href="/api/auth/start" target="_blank" rel="noopener">Continue with Magic Hour</a><button id="auth-disconnect" type="button" class="auth-provider" hidden>Sign out of this workspace</button></div>
   </dialog>
 
   <dialog id="plan-dialog" class="auth-dialog" aria-labelledby="plan-title">
