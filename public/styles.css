@@ -364,6 +364,26 @@
 .canvas-space .generation-card-overlay,.canvas-panning .generation-card-overlay{opacity:0;pointer-events:none}
 .canvas-space .generation-card-action,.canvas-panning .generation-card-action{pointer-events:none}
 
+.image-result .generation-card-overlay{display:none;inset:auto 0;top:100%;height:56px;border-radius:0;background:none;translate:none!important;scale:1!important}
+.image-result.is-complete .generation-card-overlay{display:block;opacity:1}
+.image-result .generation-card-actions{position:static;justify-content:center;gap:12px;width:100%;max-width:100%;padding-top:12px;translate:none}
+.image-result .generation-card-action{flex:0 1 auto;height:44px;min-width:0;padding:12px 20px;border:1px solid var(--border);background:var(--surface);color:var(--text);pointer-events:auto}
+.image-result .generation-card-action:not(:disabled):hover{background:var(--hover)}
+.image-result .generation-card-action:focus-visible{outline-color:var(--blue)}
+.image-result .card-action-label{display:inline}
+.image-result [data-action=enhance] img{filter:brightness(0)}
+[data-theme=dark] .image-result [data-action=enhance] img{filter:none}
+.image-result .card-download{border-color:var(--blue);background:var(--blue);color:#fff}
+.image-result .card-download:not(:disabled):hover{border-color:#1d4ed8;background:#1d4ed8}
+.canvas-space .image-result .generation-card-action,.canvas-panning .image-result .generation-card-action{pointer-events:none}
+@media(max-width:760px){
+  .generation-item.image-result.is-complete{margin-bottom:56px}
+  .canvas-scene:not(.single-generation) .image-result.is-complete{margin-bottom:108px}
+  .canvas-scene:not(.single-generation) .image-result .generation-card-overlay{height:108px}
+  .canvas-scene:not(.single-generation) .image-result .generation-card-actions{flex-direction:column;gap:8px}
+  .canvas-scene:not(.single-generation) .image-result .generation-card-action{width:100%}
+}
+
 /* Let the browser repaint vectors and glyphs at the current canvas scale. */
 .generation-item.is-complete{perspective:none}
 .generation-item.is-complete .result-card{transform:none}
