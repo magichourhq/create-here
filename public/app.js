@@ -1209,8 +1209,8 @@ function showTrial(){
   $('#trial-status').textContent=connected?(account.credits===null?'Magic Hour connected. Credit balance is temporarily unavailable.':`${account.credits.toLocaleString()} Magic Hour credits. Keep creating here.`):remaining?'Your first creation is included. No sign-up needed.':'Your included creation is used. Sign in to keep creating here.';
   $('#auth-title').textContent=connected?'Magic Hour connected':'Create your free account';
   $('#auth-description').textContent=connected?'Your creations are saved to this Magic Hour account. Sign in on another browser or device to find them here. New media uses your Magic Hour credits. Writing is included.':'Create a free Magic Hour account to keep creating here and save your creations across devices.';
-  $('#save-description').textContent=connected?'Creations are saved to your account.':sessionState?.jobs?.length?'Saved in this browser. Sign in to save to your account.':'Sign in to save creations across devices.';
-  $('#save-signin').hidden=connected;$('#account-credits').hidden=!connected;
+  $('#save-description').textContent=connected?'Saved to your account.':'Creations stay in this browser.';
+  $('#save-signin').textContent=connected?'View account':'Sign in to save across devices';$('#account-credits').hidden=!connected;
   $('#account-summary').hidden=!connected;$('#account-summary').textContent=connected?(account.email||'Your Magic Hour account'):'';
   $$('[data-auth-provider],#auth-terms').forEach(element=>element.hidden=connected);$('#auth-switch').hidden=!connected;$('#auth-disconnect').hidden=!connected;
   $$('.top-actions [data-auth-trigger],.mobile-signup').forEach(button=>button.hidden=connected);
