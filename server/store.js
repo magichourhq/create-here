@@ -38,9 +38,9 @@ export async function owned(type, id, sid) {
   if (!value || value.sid !== sid) throw new HttpError(404, "This item was not found in your workspace.");
   return value;
 }
-export async function rateLimit(sid, limit = 20) {
-  const result = await redis("EVAL", "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],60) end; return n", 1, key("rate", sid));
-  if (result > limit) throw new HttpError(429, "Please wait a minute before trying again.");
+export async function rateLimit(sid, limit = 20, seconds = 60) {
+  const result = await redis("EVAL", "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]) end; return n", 1, key("rate", sid), seconds);
+  if (result > limit) throw new HttpError(429, `Please wait ${seconds === 60 ? "a minute" : `${Math.ceil(seconds / 60)} minutes`} before trying again.`);
 }
 export async function trial(sid, accountId) {
   const [used, reserved] = await redis("HMGET", key("session", sid), "used", "reserved");

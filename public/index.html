@@ -213,7 +213,17 @@
     </div>
     <div class="auth-content auth-providers">
       <a id="auth-connect" class="auth-provider" href="/api/auth/start?provider=google&amp;popup=1" target="_blank" rel="noopener" data-auth-provider><span class="auth-icon"><img src="assets/google.svg" width="20" height="20" alt=""></span><span>Continue with Google</span></a>
-      <a id="auth-email" class="auth-provider" href="/api/auth/start?provider=email&amp;popup=1" target="_blank" rel="noopener" data-auth-provider>Continue with email</a>
+      <div id="auth-email-divider" class="auth-divider"><span></span><span class="auth-or">OR</span><span></span></div>
+      <form id="auth-email-form" class="auth-form">
+        <input id="auth-email" type="email" autocomplete="email" aria-label="Email address" placeholder="Enter your email" maxlength="254" required>
+        <input id="auth-code" type="text" inputmode="numeric" autocomplete="one-time-code" aria-label="Verification code" placeholder="Enter the 6-digit code" pattern="[0-9]{6}" disabled hidden>
+        <p id="auth-email-error" role="alert" style="margin:0" hidden></p>
+        <button id="auth-email-submit" class="auth-continue" type="submit">Continue</button>
+        <div id="auth-code-options" class="auth-providers" hidden>
+          <button id="auth-code-resend" class="auth-provider" type="button">Resend code</button>
+          <button id="auth-code-back" class="auth-provider" type="button">Use another email</button>
+        </div>
+      </form>
       <p id="auth-terms" style="margin:0;text-align:center;font-size:12px;line-height:1.5;color:var(--secondary)">By continuing, you agree to Magic Hour’s <a href="https://magichour.ai/terms-of-service" target="_blank" rel="noopener">Terms of Service</a> and <a href="https://magichour.ai/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.</p>
       <a id="auth-switch" class="auth-provider" href="/api/auth/start?prompt=consent&amp;popup=1" target="_blank" rel="noopener" hidden>Switch account</a>
       <button id="auth-disconnect" type="button" class="auth-provider" hidden>Sign out of this workspace</button>

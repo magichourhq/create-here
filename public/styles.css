@@ -397,7 +397,7 @@ html.auth-modal-open,html.auth-modal-open body{overflow:hidden}
 .auth-heading{display:flex;flex-direction:column;align-items:center;gap:24px;width:100%;text-align:center;flex:none}
 .auth-heading h2,.auth-heading p{margin:0;width:100%;line-height:1.45;text-box-trim:trim-both;text-box-edge:cap alphabetic}
 .auth-heading h2{font-size:24px;font-weight:500;letter-spacing:-.24px}
-.auth-heading p{font-size:14px;font-weight:400;letter-spacing:-.14px;color:var(--secondary)}
+.auth-heading p{font-size:14px;font-weight:400;letter-spacing:-.14px;color:var(--secondary);overflow-wrap:anywhere}
 .auth-content{display:flex;flex-direction:column;gap:28px;width:100%;flex:none}
 .auth-providers,.auth-form{display:flex;flex-direction:column;gap:16px;width:100%}
 .auth-provider,.auth-continue{color:inherit;text-decoration:none}
