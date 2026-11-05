@@ -43,7 +43,7 @@ export async function verifyAccount(sid, account) {
   }
 }
 
-export async function startAuth(res, sid, origin) {
+export async function startAuth(res, sid, origin, { provider, popup = false } = {}) {
   const redirect = `${origin.replace(/\/$/, "")}/api/auth/callback`;
   const clientKey = createHash("sha256").update(origin).digest("hex");
   let client = await get("oauth-client", clientKey);
@@ -57,10 +57,11 @@ export async function startAuth(res, sid, origin) {
     await put("oauth-client", clientKey, client);
   }
   const verifier = randomBytes(32).toString("base64url"), state = randomBytes(32).toString("base64url");
-  await put("oauth-state", state, { sid, verifier, redirect, clientId: client.client_id }, 600);
+  await put("oauth-state", state, { sid, verifier, redirect, clientId: client.client_id, popup }, 600);
   const url = new URL(`${issuer}/oauth/authorize`);
   url.search = new URLSearchParams({ response_type: "code", client_id: client.client_id, redirect_uri: redirect, state,
     code_challenge: createHash("sha256").update(verifier).digest("base64url"), code_challenge_method: "S256", resource }).toString();
+  if (provider === "google" || provider === "email") url.searchParams.set("provider", provider);
   res.statusCode = 302; res.setHeader("Location", url.href); res.end();
 }
 
@@ -81,7 +82,7 @@ export async function finishAuth(url, res, sid) {
   const account = await mcp("get_account_info", {}, token.access_token);
   if (typeof account.id !== "string" || !Number.isFinite(account.credits)) throw new HttpError(502, "Magic Hour could not verify this account.");
   await put("account", sid, { id: account.id, email: account.email, credits: account.credits, token: encrypt(token.access_token) });
-  res.statusCode = 302; res.setHeader("Location", "/"); res.end();
+  res.statusCode = 302; res.setHeader("Location", record.popup ? "/?auth=complete" : "/"); res.end();
 }
 
 export function disconnect(sid) {
