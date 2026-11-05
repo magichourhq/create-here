@@ -840,6 +840,16 @@ async function closeAuth(){
 }
 $$('[data-auth-trigger]').forEach(button=>button.addEventListener('click',()=>openAuth(button)));
 $('#auth-close').addEventListener('click',closeAuth);
+$$('[data-auth-provider]').forEach(link=>link.addEventListener('click',event=>{
+  const popup=window.open('about:blank','_blank','popup,width=480,height=720');
+  if(!popup)return;
+  popup.opener=null;popup.location.href=link.href;event.preventDefault();
+}));
+const authChannel=new BroadcastChannel('create-here-auth');
+authChannel.addEventListener('message',event=>{if(event.data==='connected')loadSession()});
+if(new URLSearchParams(location.search).get('auth')==='complete'){
+  authChannel.postMessage('connected');window.close();history.replaceState(null,'','/');
+}
 authDialog.addEventListener('cancel',e=>{e.preventDefault();closeAuth()});
 let authBackdropDown=false;
 authDialog.addEventListener('pointerdown',e=>{const r=authDialog.getBoundingClientRect();authBackdropDown=e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom});
@@ -1179,10 +1189,10 @@ function showTrial(){
   const remaining=sessionState?.trial?.remaining??1;
   const account=sessionState?.account,connected=Boolean(account?.connected);
   $('#trial-status').textContent=connected?(account.credits===null?'Magic Hour connected. Credit balance is temporarily unavailable.':`${account.credits.toLocaleString()} Magic Hour credits. Keep creating here.`):remaining?'Your first creation is included. No sign-up needed.':'Your included creation is used. Sign in to keep creating here.';
-  $('#auth-title').textContent=connected?'Magic Hour connected':'Keep creating here';
-  $('#auth-description').textContent=connected?'New media creations use your Magic Hour credits. Writing is included. Your results stay in this workspace.':'Sign in or create a Magic Hour account in the sign-in tab, then return to this workspace. New media creations use your Magic Hour credits. Your existing results stay here.';
+  $('#auth-title').textContent=connected?'Magic Hour connected':'Create your free account';
+  $('#auth-description').textContent=connected?'New media creations use your Magic Hour credits. Writing is included. Your results stay in this workspace.':'Create a free Magic Hour account and keep creating here. Your work stays in this workspace.';
   $('#account-summary').hidden=!connected;$('#account-summary').textContent=connected?(account.email||'Your Magic Hour account'):'';
-  $('#auth-connect').hidden=connected;$('#auth-disconnect').hidden=!connected;
+  $$('[data-auth-provider],#auth-terms').forEach(element=>element.hidden=connected);$('#auth-disconnect').hidden=!connected;
   $$('.top-actions [data-auth-trigger],.mobile-signup').forEach(button=>button.hidden=connected);
   const trigger=$('.bottom-nav [data-auth-trigger]');trigger.querySelector('.nav-label').textContent=connected?'My account':'Sign Up / Log In';trigger.setAttribute('aria-label',connected?'My account':'Sign Up / Log In');trigger.dataset.tip=connected?'My account':'Sign Up / Log In';
 }
