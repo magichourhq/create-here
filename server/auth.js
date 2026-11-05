@@ -105,7 +105,8 @@ async function emailRequest(url, cookies, context, options = {}) {
   const target = new URL(url, issuer);
   if (target.origin !== issuer) throw new HttpError(502, "Magic Hour could not complete sign-in.");
   const headers = { ...options.headers, "User-Agent": context.userAgent, Cookie: Object.entries(cookies).map(([name, value]) => `${name}=${value}`).join("; ") };
-  if (target.pathname === "/api/auth/signin/email" || target.pathname === "/api/auth/callback/email") {
+  const signed = target.pathname === "/api/auth/signin/email" || target.pathname === "/api/auth/callback/email";
+  if (signed) {
     const secret = process.env.CREATE_HERE_EMAIL_AUTH_SECRET;
     if (!secret || secret.length < 32) throw new HttpError(503, "Email sign-in is temporarily unavailable. Please try again shortly.");
     const encoded = Buffer.from(JSON.stringify({ timestamp: Date.now(), ip: context.ip, userAgent: context.userAgent })).toString("base64url");
@@ -116,6 +117,7 @@ async function emailRequest(url, cookies, context, options = {}) {
   }
   const response = await fetch(target, { ...options, redirect: "manual", signal: AbortSignal.timeout(22000),
     headers });
+  if (signed && response.headers.get("x-create-here-email-context") !== "verified") throw new HttpError(502, "Email sign-in is temporarily unavailable. Please try again shortly.");
   for (const header of response.headers.getSetCookie()) {
     const pair = header.split(";", 1)[0], separator = pair.indexOf("="), name = pair.slice(0, separator);
     if (/^(?:__Host-|__Secure-)?next-auth\.(?:csrf-token|callback-url|session-token)(?:\.\d+)?$/.test(name)) cookies[name] = pair.slice(separator + 1);
