@@ -599,7 +599,7 @@ function disposeGeneration(item){
   cancelAnimationFrame(item.live.frame);clearTimeout(item.rippleTimer);if(item.url)URL.revokeObjectURL(item.url);
 }
 function setGenerationLocked(locked){
-  generate.disabled=locked;syncGenerationCardActions(locked);promptInput.readOnly=locked;$('#attach-button').disabled=locked;$$('.attachment-remove').forEach(button=>button.disabled=locked);
+  generate.disabled=locked;$('#request-retry').disabled=locked;syncGenerationCardActions(locked);promptInput.readOnly=locked;$('#attach-button').disabled=locked;$$('.attachment-remove').forEach(button=>button.disabled=locked);
 }
 function refreshGenerationView(){
   const visible=generationItems.length>0&&!showingHome;
@@ -1155,9 +1155,9 @@ document.addEventListener('visibilitychange',syncHomePreviewVideos);homePreviewM
 
 let sessionState=null,pendingPlan=null,referenceJobIds=[],clarificationPrompt='';
 const requestMessage=$('#request-message'),planDialog=$('#plan-dialog');
-function showRequestMessage(text){requestMessage.textContent=text;requestMessage.hidden=!text;updatePrompt()}
+function showRequestMessage(text,retry=false){requestMessage.textContent=text;requestMessage.hidden=!text;$('#request-retry').hidden=!retry;updatePrompt()}
 async function api(path,body){
-  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
+  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}).catch(()=>{throw new Error('Could not connect. Check your connection.')});
   const data=await response.json();
   if(!response.ok){const error=new Error(typeof data.error==='string'?data.error:data.error?.message||'Your request could not be completed. Please try again.');error.status=response.status;throw error;}
   return data;
@@ -1200,7 +1200,7 @@ async function prepareCreation(event){
     $('#plan-cost').textContent=pendingPlan.costLabel||'1 included trial creation';
     $('#plan-remaining').textContent='Nothing is generated until you confirm. Failed creations do not use your trial.';
     showRequestMessage('');planDialog.showModal();$('#plan-confirm').focus();
-  }catch(error){showRequestMessage(error.message);if(error.status===402||error.status===403)openAuth(generate)}
+  }catch(error){showRequestMessage(`${error.message} Your prompt and files are still here.`,![402,403,409].includes(error.status));if(error.status===402||error.status===403)openAuth(generate)}
   finally{planning=false;setGenerationLocked(false);updatePrompt()}
 }
 $('#plan-close').addEventListener('click',()=>planDialog.close());
@@ -1208,22 +1208,22 @@ $('#plan-change').addEventListener('click',()=>{planDialog.close();promptInput.f
 $('#reference-summary').addEventListener('click',()=>{referenceJobIds=[];$('#reference-summary').hidden=true;promptInput.placeholder='Describe what you want to create or change…'});
 $('#plan-confirm').addEventListener('click',async()=>{
   if(running||planning||!pendingPlan)return;
-  planning=true;$('#plan-confirm').disabled=true;
+  planning=true;$('#plan-confirm').disabled=true;setGenerationLocked(true);
   try{
     const response=await api('/api/generate',{planId:pendingPlan.id});
+    if(clarificationPrompt)promptInput.value=response.job.prompt;
     pendingPlan=null;planDialog.close();clarificationPrompt='';
-    await displayJob(response.job);
-    attachments.forEach(item=>{if(item.url)URL.revokeObjectURL(item.url)});attachments=[];referenceJobIds=[];renderFiles();$('#reference-summary').hidden=true;
-    const result=await api('/api/session');sessionState=result;showTrial();
+    await displayJob(response.job,true);
+    try{sessionState=await api('/api/session');showTrial()}catch{toast('Could not refresh your trial status. Your creation status is unchanged.')}
   }catch(error){planDialog.close();showRequestMessage(error.message)}
   finally{planning=false;$('#plan-confirm').disabled=false;if(!running){setGenerationLocked(false);updatePrompt()}}
 });
-async function displayJob(job){
+async function displayJob(job,submitted=false){
   if(generationItems.some(item=>item.jobId===job.id))return;
   const first=generationItems.length===0;
   running=true;showingHome=false;
   const request=++generationRequest,item=await makeGeneration(request,job.kind);if(!item){running=false;return;}
-  item.jobId=job.id;item.prompt=job.prompt||promptInput.value;
+  item.jobId=job.id;item.prompt=job.prompt||promptInput.value;item.submitted=submitted;
   $('#workspace-name').textContent='Your creations';syncSessionFolder();
   applyJob(item,job);requestAnimationFrame(()=>revealGeneration(item,first));
   if(!['complete','error','canceled','submission_unknown'].includes(job.status)){
@@ -1235,6 +1235,9 @@ function applyJob(item,job){
   item.progress.textContent=job.status==='queued'?'Queued':job.status==='complete'?'Ready':item.status==='error'?'Could not create':'Creating…';
   $('#processing-text').textContent=job.status==='queued'?'Your creation is queued…':'Bringing your idea to life…';
   if(item.status==='complete'){
+    if(item.submitted){
+      attachments.forEach(source=>{if(source.url)URL.revokeObjectURL(source.url)});attachments=[];referenceJobIds=[];renderFiles();$('#reference-summary').hidden=true;item.submitted=false;
+    }
     item.downloadUrl=`/api/download/${encodeURIComponent(job.id)}/0`;item.text=job.text||'';
     item.progress.hidden=true;item.element.classList.add('is-complete');resetLiveCard(item);
     if(job.kind==='image'){
@@ -1247,7 +1250,9 @@ function applyJob(item,job){
     item.card.setAttribute('aria-label',`Open generated ${job.kind}`);
   }else if(item.status==='error'){
     item.progress.textContent=['submitting','submission_unknown'].includes(job.status)?'Needs attention':'Could not create';item.element.classList.add('generation-failed');
-    showRequestMessage(typeof job.error==='string'?job.error:job.error?.message||'This creation failed. Your trial is still available.');
+    const retry=item.submitted&&['error','canceled'].includes(job.status);
+    const message=typeof job.error==='string'?job.error:job.error?.message||'This creation failed. Your trial is still available.';
+    showRequestMessage(message+(retry?' Your prompt and files are still here. Try again or change your request.':''),retry);
   }
   refreshGenerationView();syncGenerationCardActions();
 }
@@ -1255,7 +1260,8 @@ async function pollJob(item){
   try{
     const {job}=await api(`/api/jobs/${encodeURIComponent(item.jobId)}`);applyJob(item,job);
     if(['complete','error','canceled','submission_unknown'].includes(job.status)){
-      stopGeneration();sessionState=await api('/api/session');showTrial();
+      stopGeneration();
+      try{sessionState=await api('/api/session');showTrial()}catch{toast('Could not refresh your trial status. Your creation status is unchanged.')}
       if(job.status==='complete')showRequestMessage('Your creation is ready. Open it to preview or download.');return;
     }
     showRequestMessage('');
