@@ -1159,6 +1159,16 @@ document.addEventListener('visibilitychange',syncHomePreviewVideos);homePreviewM
 let sessionState=null,pendingPlan=null,referenceJobIds=[],clarificationPrompt='';
 const requestMessage=$('#request-message'),planDialog=$('#plan-dialog');
 function showRequestMessage(text,retry=false){requestMessage.textContent=text;$('#processing-info').hidden=!text;dock.classList.toggle('has-status',!!text);$('#request-retry').hidden=!retry;updatePrompt()}
+$$('[data-new-creation]').forEach(button=>button.addEventListener('click',()=>{
+  if(running||planning){toast('Wait for your current request to finish.');return}
+  goHome();
+  templateSelectionRevision++;templateAttachmentLoading=false;promptRevealAnimation?.cancel();
+  attachments.forEach(item=>{if(item.url)URL.revokeObjectURL(item.url)});attachments=[];
+  referenceJobIds=[];clarificationPrompt='';pendingPlan=null;
+  $('#reference-summary').hidden=true;
+  promptInput.value='';promptInput.placeholder='Describe what you want to create or change…';
+  renderFiles();showRequestMessage('');promptInput.focus({preventScroll:true});
+}));
 async function api(path,body){
   const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}).catch(()=>{throw new Error('Could not connect. Check your connection.')});
   const data=await response.json();
