@@ -204,15 +204,16 @@ function syncActionsMenu(){
   }
 }
 const CARD_GAP=40,SNAP_DISTANCE=36;
+function generationHeight(item){return item.kind==='image'?item.element.scrollHeight:item.height}
 function snapCardPosition(item,x,y,zoom,disabled=false,excluded=new Set()){
   const result={x,y};if(disabled)return result;
   // Keep the layout gap in canvas units; only the pointer's capture radius uses screen pixels.
-  const threshold=SNAP_DISTANCE/zoom,spacing=CARD_GAP,nearby=80/zoom,w=item.width,h=item.height;
+  const threshold=SNAP_DISTANCE/zoom,spacing=CARD_GAP,nearby=80/zoom,w=item.width,h=generationHeight(item),footer=h-item.height,cy=y+footer/2;
   let bestX=threshold,bestY=threshold;
   for(const other of generationItems){
     if(other===item||excluded.has(other)||(expandedStack&&other.stackId!==expandedStack.id))continue;
-    const ow=other.width,oh=other.height;
-    const gapX=Math.max(0,Math.abs(x-other.tx)-(w+ow)/2),gapY=Math.max(0,Math.abs(y-other.ty)-(h+oh)/2);
+    const ow=other.width,oh=generationHeight(other),oy=other.ty+(oh-other.height)/2;
+    const gapX=Math.max(0,Math.abs(x-other.tx)-(w+ow)/2),gapY=Math.max(0,Math.abs(cy-oy)-(h+oh)/2);
     if(gapY<=nearby){
       const separated=Math.abs(x-other.tx)>=(w+ow)/2;
       const anchors=separated?[other.tx+Math.sign(x-other.tx)*((w+ow)/2+spacing)]:[other.tx,other.tx+(w-ow)/2,other.tx+(ow-w)/2];
@@ -222,10 +223,10 @@ function snapCardPosition(item,x,y,zoom,disabled=false,excluded=new Set()){
       }
     }
     if(gapX<=nearby){
-      const separated=Math.abs(y-other.ty)>=(h+oh)/2;
-      const anchors=separated?[other.ty+Math.sign(y-other.ty)*((h+oh)/2+spacing)]:[other.ty,other.ty+(h-oh)/2,other.ty+(oh-h)/2];
+      const separated=Math.abs(cy-oy)>=(h+oh)/2;
+      const anchors=separated?[oy+Math.sign(cy-oy)*((h+oh)/2+spacing)]:[oy,oy+(h-oh)/2,oy+(oh-h)/2];
       for(const anchor of anchors){
-        const delta=anchor-y,distance=Math.abs(delta);
+        const delta=anchor-footer/2-y,distance=Math.abs(delta);
         if(distance<bestY){bestY=distance;result.y=y+delta;}
       }
     }
@@ -236,7 +237,8 @@ function magneticNeighbours(members){
   const neighbours=new Set(),group=new Set(members);
   for(const item of members)for(const other of generationItems){
     if(group.has(other)||(expandedStack&&other.stackId!==expandedStack.id))continue;
-    const dx=Math.abs(item.tx-other.tx),dy=Math.abs(item.ty-other.ty),halfW=(item.width+other.width)/2,halfH=(item.height+other.height)/2;
+    const h=generationHeight(item),oh=generationHeight(other);
+    const dx=Math.abs(item.tx-other.tx),dy=Math.abs(item.ty+(h-item.height)/2-other.ty-(oh-other.height)/2),halfW=(item.width+other.width)/2,halfH=(h+oh)/2;
     if((Math.abs(dx-halfW-CARD_GAP)<1&&dy<halfH)||(Math.abs(dy-halfH-CARD_GAP)<1&&dx<halfW))neighbours.add(other);
   }
   return neighbours;
@@ -376,7 +378,7 @@ function generationBounds(){
   const left=Math.min(...items.map(item=>item.tx-item.element.offsetWidth/2));
   const right=Math.max(...items.map(item=>item.tx+item.element.offsetWidth/2));
   const top=Math.min(...items.map(item=>item.ty-item.element.offsetHeight/2));
-  const bottom=Math.max(...items.map(item=>item.ty+item.element.offsetHeight/2));
+  const bottom=Math.max(...items.map(item=>item.ty-item.element.offsetHeight/2+generationHeight(item)));
   return {x:(left+right)/2,y:(top+bottom)/2,width:right-left,height:bottom-top};
 }
 function itemAt(target){return generationNodes.get(target.closest('.generation-item'))}
@@ -496,15 +498,16 @@ function normalizedCardSize(width,height){
   return {width:w*scale,height:h*scale};
 }
 function addGenerationCardActions(item){
+  const imageResult=item.kind==='image';
   const overlay=document.createElement('div'),controls=document.createElement('div');
   overlay.className='generation-card-overlay';controls.className='generation-card-actions';controls.setAttribute('role','group');controls.setAttribute('aria-label',`Actions for generation ${item.id}`);
-  const actions=[['download','Download','8dfd8'],['enhance','Enhance','adf5e'],['share','Share','91cdd']];
+  const actions=imageResult?[['enhance','Edit image','adf5e'],['download','Download','8dfd8']]:[['download','Download','8dfd8'],['enhance','Enhance','adf5e'],['share','Share','91cdd']];
   for(const [action,label,asset] of actions){
     const button=document.createElement('button'),icon=document.createElement('span'),image=document.createElement('img');
-    button.type='button';button.className='generation-card-action tip '+(action==='download'?'card-download':'');button.dataset.action=action;button.setAttribute('aria-label',`${label} generation ${item.id}`);button.disabled=true;
+    button.type='button';button.className='generation-card-action '+(imageResult?'':'tip ')+(action==='download'?'card-download':'');button.dataset.action=action;button.setAttribute('aria-label',`${label} generation ${item.id}`);button.disabled=true;
     button.dataset.tip=label;
     icon.className='generation-card-action-icon'+(action==='enhance'?' card-enhance-icon':'');image.src=`assets/generation-hover-${asset}.svg`;image.alt='';image.draggable=false;icon.append(image);button.append(icon);
-    const text=document.createElement('span');text.className='card-action-label';text.textContent=label;button.append(text);bindTooltip(button);
+    const text=document.createElement('span');text.className='card-action-label';text.textContent=label;button.append(text);if(!imageResult)bindTooltip(button);
     button.addEventListener('click',e=>{
       e.stopPropagation();hideTooltip(true);if(item.status!=='complete')return;
       if(action==='download')downloadGenerations([item]).catch(()=>toast('Could not download the image. Try again.'));
@@ -519,15 +522,15 @@ function syncGenerationCardActions(locked=running){
   $('#viewer-enhance').disabled=locked;
   generationItems.forEach(item=>item.element.querySelectorAll('.generation-card-action').forEach(button=>{button.disabled=item.status!=='complete'||(button.dataset.action==='enhance'&&locked)}));
 }
-async function makeGeneration(request){
+async function makeGeneration(request,kind){
   const id=++generationNumber,element=document.createElement('div'),card=document.createElement('button'),image=document.createElement('img'),sheen=document.createElement('span'),progress=document.createElement('span');
-  element.className='generation-item';element.dataset.generationId=String(id);
+  element.className='generation-item'+(kind==='image'?' image-result':'');element.dataset.generationId=String(id);
   card.type='button';card.className='result-card';card.setAttribute('aria-label',`Generation ${id}, generating${mobileLayout.matches?'':'. Drag to move'}`);
   image.alt=`Generation ${id}`;image.draggable=false;
   sheen.className='live-sheen';sheen.setAttribute('aria-hidden','true');
   progress.className='progress-label';progress.textContent='Queued';progress.setAttribute('role','status');progress.setAttribute('aria-label',`Generation ${id} status`);
   card.append(image,sheen,progress);element.append(card);
-  const item={id,element,card,image,progress,status:'pending',x:0,y:0,tx:0,ty:0,url:null,prompt:promptInput.value,live:{x:0,y:0,tx:0,ty:0,time:null,frame:0},rippleTimer:null};
+  const item={id,kind,element,card,image,progress,status:'pending',x:0,y:0,tx:0,ty:0,url:null,prompt:promptInput.value,live:{x:0,y:0,tx:0,ty:0,time:null,frame:0},rippleTimer:null};
   const source=attachments.find(a=>a.url);
   if(source){item.url=URL.createObjectURL(source.file);image.src=item.url}
   else image.src='assets/b80ae.svg';
@@ -572,7 +575,7 @@ async function makeGeneration(request){
 }
 function generationRevealZoom(item){
   const width=Math.max(80,canvasViewport.clientWidth-48),height=Math.max(80,canvasViewport.clientHeight-form.getBoundingClientRect().height-160);
-  return Math.max(MIN_ZOOM,Math.min(canvasView.tz,width/item.width,height/item.height));
+  return Math.max(MIN_ZOOM,Math.min(canvasView.tz,width/item.width,height/generationHeight(item)));
 }
 function revealGeneration(item,first){
   if(mobileLayout.matches){
@@ -584,11 +587,11 @@ function revealGeneration(item,first){
   // Keep the user's zoom, shifting the camera only when the new card is outside the usable view.
   canvasView.tz=generationRevealZoom(item);
   const originX=canvasScene.offsetLeft,originY=canvasScene.offsetTop,z=canvasView.tz;
-  const halfW=item.element.offsetWidth*z/2,halfH=item.element.offsetHeight*z/2;
+  const halfW=item.element.offsetWidth*z/2,halfH=item.element.offsetHeight*z/2,footer=(generationHeight(item)-item.element.offsetHeight)*z;
   const cx=originX+canvasView.tx+item.tx*z,cy=originY+canvasView.ty+item.ty*z;
   const left=24,right=canvasViewport.clientWidth-24,top=mobileLayout.matches?112:76,bottom=canvasViewport.clientHeight-form.getBoundingClientRect().height-80;
   if(cx+halfW>right)canvasView.tx-=cx+halfW-right;else if(cx-halfW<left)canvasView.tx+=left-(cx-halfW);
-  if(cy+halfH>bottom)canvasView.ty-=cy+halfH-bottom;else if(cy-halfH<top)canvasView.ty+=top-(cy-halfH);
+  if(cy+halfH+footer>bottom)canvasView.ty-=cy+halfH+footer-bottom;else if(cy-halfH<top)canvasView.ty+=top-(cy-halfH);
   requestCanvasFrame();
 }
 function disposeGeneration(item){
@@ -596,7 +599,7 @@ function disposeGeneration(item){
   cancelAnimationFrame(item.live.frame);clearTimeout(item.rippleTimer);if(item.url)URL.revokeObjectURL(item.url);
 }
 function setGenerationLocked(locked){
-  generate.disabled=locked;syncGenerationCardActions(locked);promptInput.readOnly=locked;$('#attach-button').disabled=locked;$$('.attachment-remove').forEach(button=>button.disabled=locked);
+  generate.disabled=locked;$('#request-retry').disabled=locked;syncGenerationCardActions(locked);promptInput.readOnly=locked;$('#attach-button').disabled=locked;$$('.attachment-remove').forEach(button=>button.disabled=locked);
 }
 function refreshGenerationView(){
   const visible=generationItems.length>0&&!showingHome;
@@ -661,7 +664,7 @@ function openStackFocus(id){
   if(expandedStack)closeStackFocus();
   const members=generationItems.filter(item=>item.stackId===id).sort((a,b)=>a.id-b.id);if(members.length<2)return;
   const x=members[0].tx,y=members[0].ty,columns=Math.min(3,members.length),rows=Math.ceil(members.length/columns);
-  const width=Math.max(...members.map(item=>item.width)),height=Math.max(...members.map(item=>item.height));
+  const width=Math.max(...members.map(item=>item.width)),height=Math.max(...members.map(generationHeight));
   expandedStack={id,x,y,extracted:new Set(),view:{tx:canvasView.tx,ty:canvasView.ty,tz:canvasView.tz}};
   members.forEach((item,index)=>{item.tx=x+(index%columns-(columns-1)/2)*(width+CARD_GAP);item.ty=y+(Math.floor(index/columns)-(rows-1)/2)*(height+CARD_GAP);item.element.style.zIndex=String(++cardStack)});
   workspace.classList.add('stack-focus-open');selectGenerations([]);refreshStacks();
@@ -1152,9 +1155,9 @@ document.addEventListener('visibilitychange',syncHomePreviewVideos);homePreviewM
 
 let sessionState=null,pendingPlan=null,referenceJobIds=[],clarificationPrompt='';
 const requestMessage=$('#request-message'),planDialog=$('#plan-dialog');
-function showRequestMessage(text){requestMessage.textContent=text;requestMessage.hidden=!text;updatePrompt()}
+function showRequestMessage(text,retry=false){requestMessage.textContent=text;requestMessage.hidden=!text;$('#request-retry').hidden=!retry;updatePrompt()}
 async function api(path,body){
-  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
+  const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}).catch(()=>{throw new Error('Could not connect. Check your connection.')});
   const data=await response.json();
   if(!response.ok){const error=new Error(typeof data.error==='string'?data.error:data.error?.message||'Your request could not be completed. Please try again.');error.status=response.status;throw error;}
   return data;
@@ -1206,7 +1209,7 @@ async function prepareCreation(event){
     $('#plan-cost').textContent=pendingPlan.costLabel||'1 included trial creation';
     $('#plan-remaining').textContent=sessionState?.account?.connected?'Nothing is generated until you confirm. Media charges use your connected Magic Hour account; writing uses the app’s OpenAI service.':'Nothing is generated until you confirm. Failed creations do not use your trial.';
     showRequestMessage('');planDialog.showModal();$('#plan-confirm').focus();
-  }catch(error){showRequestMessage(error.message);if(error.status===401){await loadSession()}if([401,402,403].includes(error.status))openAuth(generate)}
+  }catch(error){showRequestMessage(`${error.message} Your prompt and files are still here.`,![401,402,403,409].includes(error.status));if(error.status===401){await loadSession()}if([401,402,403].includes(error.status))openAuth(generate)}
   finally{planning=false;setGenerationLocked(false);updatePrompt()}
 }
 $('#plan-close').addEventListener('click',()=>planDialog.close());
@@ -1214,22 +1217,22 @@ $('#plan-change').addEventListener('click',()=>{planDialog.close();promptInput.f
 $('#reference-summary').addEventListener('click',()=>{referenceJobIds=[];$('#reference-summary').hidden=true;promptInput.placeholder='Describe what you want to create or change…'});
 $('#plan-confirm').addEventListener('click',async()=>{
   if(running||planning||!pendingPlan)return;
-  planning=true;$('#plan-confirm').disabled=true;
+  planning=true;$('#plan-confirm').disabled=true;setGenerationLocked(true);
   try{
     const response=await api('/api/generate',{planId:pendingPlan.id});
+    if(clarificationPrompt)promptInput.value=response.job.prompt;
     pendingPlan=null;planDialog.close();clarificationPrompt='';
-    await displayJob(response.job);
-    attachments.forEach(item=>{if(item.url)URL.revokeObjectURL(item.url)});attachments=[];referenceJobIds=[];renderFiles();$('#reference-summary').hidden=true;
-    await loadSession();
+    await displayJob(response.job,true);
+    await loadSession(true);
   }catch(error){planDialog.close();showRequestMessage(error.message);if(error.status===401){await loadSession();openAuth(generate)}}
   finally{planning=false;$('#plan-confirm').disabled=false;if(!running){setGenerationLocked(false);updatePrompt()}}
 });
-async function displayJob(job){
+async function displayJob(job,submitted=false){
   if(generationItems.some(item=>item.jobId===job.id))return;
   const first=generationItems.length===0;
   running=true;showingHome=false;
-  const request=++generationRequest,item=await makeGeneration(request);if(!item){running=false;return;}
-  item.jobId=job.id;item.kind=job.kind;item.prompt=job.prompt||promptInput.value;
+  const request=++generationRequest,item=await makeGeneration(request,job.kind);if(!item){running=false;return;}
+  item.jobId=job.id;item.prompt=job.prompt||promptInput.value;item.submitted=submitted;
   $('#workspace-name').textContent='Your creations';syncSessionFolder();
   applyJob(item,job);requestAnimationFrame(()=>revealGeneration(item,first));
   if(!['complete','error','canceled','submission_unknown'].includes(job.status)){
@@ -1241,6 +1244,9 @@ function applyJob(item,job){
   item.progress.textContent=job.status==='queued'?'Queued':job.status==='complete'?'Ready':item.status==='error'?'Could not create':'Creating…';
   $('#processing-text').textContent=job.status==='queued'?'Your creation is queued…':'Bringing your idea to life…';
   if(item.status==='complete'){
+    if(item.submitted){
+      attachments.forEach(source=>{if(source.url)URL.revokeObjectURL(source.url)});attachments=[];referenceJobIds=[];renderFiles();$('#reference-summary').hidden=true;item.submitted=false;
+    }
     item.downloadUrl=`/api/download/${encodeURIComponent(job.id)}/0`;item.text=job.text||'';
     item.progress.hidden=true;item.element.classList.add('is-complete');resetLiveCard(item);
     if(job.kind==='image'){
@@ -1253,7 +1259,9 @@ function applyJob(item,job){
     item.card.setAttribute('aria-label',`Open generated ${job.kind}`);
   }else if(item.status==='error'){
     item.progress.textContent=['submitting','submission_unknown'].includes(job.status)?'Needs attention':'Could not create';item.element.classList.add('generation-failed');
-    showRequestMessage(typeof job.error==='string'?job.error:job.error?.message||'This creation failed. Your trial is still available.');
+    const retry=item.submitted&&['error','canceled'].includes(job.status);
+    const message=typeof job.error==='string'?job.error:job.error?.message||'This creation failed. Your trial is still available.';
+    showRequestMessage(message+(retry?' Your prompt and files are still here. Try again or change your request.':''),retry);
   }
   refreshGenerationView();syncGenerationCardActions();
 }
@@ -1261,14 +1269,14 @@ async function pollJob(item){
   try{
     const {job}=await api(`/api/jobs/${encodeURIComponent(item.jobId)}`);applyJob(item,job);
     if(['complete','error','canceled','submission_unknown'].includes(job.status)){
-      stopGeneration();await loadSession();
+      stopGeneration();await loadSession(true);
       if(job.status==='complete')showRequestMessage('Your creation is ready. Open it to preview or download.');return;
     }
     showRequestMessage('');
   }catch(error){showRequestMessage('We lost the connection. Your creation may still be running. We’ll check again.');}
   timer=setTimeout(()=>pollJob(item),5000);
 }
-async function loadSession(){
+async function loadSession(creationRefresh=false){
   try{
     const previousAccountId=sessionState?.account?.id;
     sessionState=await api('/api/session');
@@ -1278,6 +1286,6 @@ async function loadSession(){
     const jobs=[...(sessionState.jobs||[])].sort((a,b)=>Number(!['complete','error','canceled','submission_unknown'].includes(a.status))-Number(!['complete','error','canceled','submission_unknown'].includes(b.status)));
     for(const job of jobs)await displayJob(job);
     if(sessionState.configured===false)showRequestMessage('Create.here is getting ready. Generation will be available soon.');
-  }catch(error){showRequestMessage('Create.here is getting ready. Generation will be available soon.');}
+  }catch(error){if(creationRefresh)toast('Could not refresh your account status. Your creation status is unchanged.');else showRequestMessage('Create.here is getting ready. Generation will be available soon.');}
 }
 loadSession();
