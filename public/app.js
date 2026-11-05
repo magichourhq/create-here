@@ -368,7 +368,7 @@ function resetCanvas(fit=false){
   canvasView.tx=0;canvasView.ty=0;canvasView.tz=1;
   if(fit&&generationItems.length){
     const bounds=generationBounds();
-    canvasView.tz=Math.max(MIN_ZOOM,Math.min(1,(canvasViewport.clientWidth-48)/bounds.width,Math.max(80,canvasViewport.clientHeight-form.getBoundingClientRect().height-120)/bounds.height));
+    canvasView.tz=Math.max(MIN_ZOOM,Math.min(1,(canvasViewport.clientWidth-48)/bounds.width,Math.max(80,canvasViewport.clientHeight-dock.offsetHeight-120)/bounds.height));
     canvasView.tx=-bounds.x*canvasView.tz;canvasView.ty=-bounds.y*canvasView.tz;
   }
   requestCanvasFrame();
@@ -574,12 +574,12 @@ async function makeGeneration(request,kind){
   return item;
 }
 function generationRevealZoom(item){
-  const width=Math.max(80,canvasViewport.clientWidth-48),height=Math.max(80,canvasViewport.clientHeight-form.getBoundingClientRect().height-160);
+  const width=Math.max(80,canvasViewport.clientWidth-48),height=Math.max(80,canvasViewport.clientHeight-dock.offsetHeight-160);
   return Math.max(MIN_ZOOM,Math.min(canvasView.tz,width/item.width,height/generationHeight(item)));
 }
 function revealGeneration(item,first){
   if(mobileLayout.matches){
-    const r=item.element.getBoundingClientRect(),bottom=innerHeight-form.getBoundingClientRect().height-(running?84:36);
+    const r=item.element.getBoundingClientRect(),bottom=innerHeight-dock.offsetHeight-(running?84:36);
     if(r.top<80||r.bottom>bottom)window.scrollTo({top:Math.max(0,window.scrollY+r.top-80),behavior:reduceMotion?'instant':'smooth'});
     return;
   }
@@ -589,7 +589,7 @@ function revealGeneration(item,first){
   const originX=canvasScene.offsetLeft,originY=canvasScene.offsetTop,z=canvasView.tz;
   const halfW=item.element.offsetWidth*z/2,halfH=item.element.offsetHeight*z/2,footer=(generationHeight(item)-item.element.offsetHeight)*z;
   const cx=originX+canvasView.tx+item.tx*z,cy=originY+canvasView.ty+item.ty*z;
-  const left=24,right=canvasViewport.clientWidth-24,top=mobileLayout.matches?112:76,bottom=canvasViewport.clientHeight-form.getBoundingClientRect().height-80;
+  const left=24,right=canvasViewport.clientWidth-24,top=mobileLayout.matches?112:76,bottom=canvasViewport.clientHeight-dock.offsetHeight-80;
   if(cx+halfW>right)canvasView.tx-=cx+halfW-right;else if(cx-halfW<left)canvasView.tx+=left-(cx-halfW);
   if(cy+halfH+footer>bottom)canvasView.ty-=cy+halfH+footer-bottom;else if(cy-halfH<top)canvasView.ty+=top-(cy-halfH);
   requestCanvasFrame();
@@ -599,7 +599,7 @@ function disposeGeneration(item){
   cancelAnimationFrame(item.live.frame);clearTimeout(item.rippleTimer);if(item.url)URL.revokeObjectURL(item.url);
 }
 function setGenerationLocked(locked){
-  generate.disabled=locked;$('#request-retry').disabled=locked;syncGenerationCardActions(locked);promptInput.readOnly=locked;$('#attach-button').disabled=locked;$$('.attachment-remove').forEach(button=>button.disabled=locked);
+  generate.disabled=locked;form.setAttribute('aria-busy',String(locked));$('#request-retry').disabled=locked;syncGenerationCardActions(locked);promptInput.readOnly=locked;$('#attach-button').disabled=locked;$$('.attachment-remove').forEach(button=>button.disabled=locked);
 }
 function refreshGenerationView(){
   const visible=generationItems.length>0&&!showingHome;
@@ -624,7 +624,7 @@ $('#session-button').addEventListener('click',()=>{
 function stopGeneration(){
   clearTimeout(timer);timer=null;running=false;currentGeneration=null;
   workspace.classList.remove('generating');dock.classList.remove('processing');
-  $('#processing-info').hidden=true;setGenerationLocked(false);
+  setGenerationLocked(false);
   generate.setAttribute('aria-label','Generate');generate.dataset.tip='Generate';
   refreshGenerationView();updatePrompt();
 }
@@ -668,7 +668,7 @@ function openStackFocus(id){
   expandedStack={id,x,y,extracted:new Set(),view:{tx:canvasView.tx,ty:canvasView.ty,tz:canvasView.tz}};
   members.forEach((item,index)=>{item.tx=x+(index%columns-(columns-1)/2)*(width+CARD_GAP);item.ty=y+(Math.floor(index/columns)-(rows-1)/2)*(height+CARD_GAP);item.element.style.zIndex=String(++cardStack)});
   workspace.classList.add('stack-focus-open');selectGenerations([]);refreshStacks();
-  const bounds=generationBounds(),z=Math.max(MIN_ZOOM,Math.min(1,(canvasViewport.clientWidth-96)/bounds.width,Math.max(80,canvasViewport.clientHeight-form.offsetHeight-160)/bounds.height));
+  const bounds=generationBounds(),z=Math.max(MIN_ZOOM,Math.min(1,(canvasViewport.clientWidth-96)/bounds.width,Math.max(80,canvasViewport.clientHeight-dock.offsetHeight-160)/bounds.height));
   canvasView.tz=z;canvasView.tx=-bounds.x*z;canvasView.ty=-bounds.y*z;requestCanvasFrame();
 }
 function closeStackFocus(collapse=true,restoreView=true){
@@ -813,10 +813,13 @@ window.visualViewport?.addEventListener('resize',updateKeyboardOffset);
 window.visualViewport?.addEventListener('scroll',updateKeyboardOffset);
 window.addEventListener('resize',updateKeyboardOffset);updateKeyboardOffset();
 let composerWidth=0;
-new ResizeObserver(([entry])=>{
-  workspace.style.setProperty('--dock-height',(entry.borderBoxSize?.[0]?.blockSize??form.getBoundingClientRect().height)+'px');
-  if(Math.abs(entry.contentRect.width-composerWidth)>.5){composerWidth=entry.contentRect.width;requestAnimationFrame(updatePrompt)}
-}).observe(form);
+const composerObserver=new ResizeObserver(entries=>{
+  for(const entry of entries){
+    if(entry.target===dock)workspace.style.setProperty('--dock-height',(entry.borderBoxSize?.[0]?.blockSize??dock.offsetHeight)+'px');
+    if(entry.target===form&&Math.abs(entry.contentRect.width-composerWidth)>.5){composerWidth=entry.contentRect.width;requestAnimationFrame(updatePrompt)}
+  }
+});
+composerObserver.observe(form);composerObserver.observe(dock);
 
 // Open the auth UI only from the explicitly designated account/navigation controls.
 const authDialog=$('#auth-dialog');let authMotion=null,authReturnFocus=null,authClosing=false;
@@ -1155,7 +1158,7 @@ document.addEventListener('visibilitychange',syncHomePreviewVideos);homePreviewM
 
 let sessionState=null,pendingPlan=null,referenceJobIds=[],clarificationPrompt='';
 const requestMessage=$('#request-message'),planDialog=$('#plan-dialog');
-function showRequestMessage(text,retry=false){requestMessage.textContent=text;requestMessage.hidden=!text;$('#request-retry').hidden=!retry;updatePrompt()}
+function showRequestMessage(text,retry=false){requestMessage.textContent=text;$('#processing-info').hidden=!text;dock.classList.toggle('has-status',!!text);$('#request-retry').hidden=!retry;updatePrompt()}
 async function api(path,body){
   const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}).catch(()=>{throw new Error('Could not connect. Check your connection.')});
   const data=await response.json();
@@ -1195,9 +1198,10 @@ async function prepareCreation(event){
   if(running||planning||templateAttachmentLoading)return;
   const entered=promptInput.value.trim();if(!entered&&!attachments.length&&!referenceJobIds.length)return;
   planning=true;generate.disabled=true;setGenerationLocked(true);
-  showRequestMessage('Understanding your request…');
+  showRequestMessage(attachments.some(item=>!item.assetId)?'Preparing your references...':'Understanding your request…');
   try{
     const assetIds=[];for(const item of attachments)assetIds.push(await uploadAttachment(item));
+    showRequestMessage('Understanding your request…');
     const prompt=clarificationPrompt?`${clarificationPrompt}\nAdditional information: ${entered}`:entered;
     const response=await api('/api/plan',{prompt,assetIds,selectedJobIds:referenceJobIds});
     if(response.question||response.clarification){
@@ -1236,13 +1240,13 @@ async function displayJob(job,submitted=false){
   $('#workspace-name').textContent='Your creations';syncSessionFolder();
   applyJob(item,job);requestAnimationFrame(()=>revealGeneration(item,first));
   if(!['complete','error','canceled','submission_unknown'].includes(job.status)){
-    currentGeneration=item;workspace.classList.add('generating');dock.classList.add('processing');$('#processing-info').hidden=false;setGenerationLocked(true);pollJob(item);
+    currentGeneration=item;workspace.classList.add('generating');dock.classList.add('processing');setGenerationLocked(true);pollJob(item);
   }else{running=false;refreshGenerationView()}
 }
 function applyJob(item,job){
   item.kind=job.kind;item.status=job.status==='complete'?'complete':['error','canceled','submission_unknown'].includes(job.status)?'error':'pending';
   item.progress.textContent=job.status==='queued'?'Queued':job.status==='complete'?'Ready':item.status==='error'?'Could not create':'Creating…';
-  $('#processing-text').textContent=job.status==='queued'?'Your creation is queued…':'Bringing your idea to life…';
+  if(item.status==='pending')showRequestMessage(job.status==='queued'?'Your creation is queued…':'Bringing your idea to life…');
   if(item.status==='complete'){
     if(item.submitted){
       attachments.forEach(source=>{if(source.url)URL.revokeObjectURL(source.url)});attachments=[];referenceJobIds=[];renderFiles();$('#reference-summary').hidden=true;item.submitted=false;
@@ -1257,6 +1261,7 @@ function applyJob(item,job){
     }else if(job.kind==='text'){item.image.hidden=true;const text=document.createElement('p');text.className='writing-preview';text.textContent=job.text;item.card.prepend(text);}
     else{item.image.src='assets/b1ae1.png';item.progress.hidden=false;item.progress.textContent='Music · Play';}
     item.card.setAttribute('aria-label',`Open generated ${job.kind}`);
+    showRequestMessage('Your creation is ready. Open it to preview or download.');
   }else if(item.status==='error'){
     item.progress.textContent=['submitting','submission_unknown'].includes(job.status)?'Needs attention':'Could not create';item.element.classList.add('generation-failed');
     const retry=item.submitted&&['error','canceled'].includes(job.status);
@@ -1270,9 +1275,8 @@ async function pollJob(item){
     const {job}=await api(`/api/jobs/${encodeURIComponent(item.jobId)}`);applyJob(item,job);
     if(['complete','error','canceled','submission_unknown'].includes(job.status)){
       stopGeneration();await loadSession(true);
-      if(job.status==='complete')showRequestMessage('Your creation is ready. Open it to preview or download.');return;
+      return;
     }
-    showRequestMessage('');
   }catch(error){showRequestMessage('We lost the connection. Your creation may still be running. We’ll check again.');}
   timer=setTimeout(()=>pollJob(item),5000);
 }
