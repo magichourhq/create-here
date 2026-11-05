@@ -17,7 +17,7 @@ export async function mcp(name, args = {}, token = process.env.MAGIC_HOUR_API_KE
     Authorization: `Bearer ${token}`, "Content-Type": "application/json",
     Accept: "application/json, text/event-stream", "MCP-Protocol-Version": "2025-03-26"
   }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }), signal: AbortSignal.timeout(22000) });
-  if (!response.ok) { const e = new HttpError(502, "Magic Hour could not accept this request."); e.upstreamStatus = response.status; throw e; }
+  if (!response.ok) { const e = new HttpError(response.status === 401 && token !== process.env.MAGIC_HOUR_API_KEY ? 401 : 502, "Magic Hour could not accept this request."); e.upstreamStatus = response.status; throw e; }
   const raw = await response.text();
   let envelope;
   try { envelope = JSON.parse(raw); } catch {
@@ -29,6 +29,7 @@ export async function mcp(name, args = {}, token = process.env.MAGIC_HOUR_API_KE
     const e = new HttpError(502, "Magic Hour could not complete this request. Please check your inputs and account access.");
     const status = message.match(/\b(400|401|402|403|404|422|500|502|503)\b/);
     if (status) e.upstreamStatus = Number(status[1]);
+    if (e.upstreamStatus === 401 && token !== process.env.MAGIC_HOUR_API_KEY) e.status = 401;
     if (envelope?.error?.code === -32602 || /\b(400|401|402|403|404|422)\b|insufficient_credits|plan_upgrade_required|subscription_required|invalid_request|unprocessable_entity/.test(message)) e.definiteRejection = true;
     throw e;
   }
@@ -38,6 +39,24 @@ export async function mcp(name, args = {}, token = process.env.MAGIC_HOUR_API_KE
   throw new HttpError(502, "Magic Hour returned an unreadable result. The request will not be repeated automatically.");
 }
 const auth = () => ({ Authorization: `Bearer ${process.env.OPENAI_API_KEY}` });
+export async function uploadImage(extension, mimeType, bytes, token) {
+  const presigned = await mcp("get_upload_urls", { items: [{ type: "image", extension }] }, token), item = presigned.items?.[0];
+  if (!item?.upload_url || !item.file_path) throw new HttpError(502, "Magic Hour could not prepare your image upload.");
+  const url = new URL(item.upload_url);
+  if (url.protocol !== "https:" || url.hostname !== "videos.magichour.ai" || url.port || url.username || url.password) throw new HttpError(502, "Magic Hour returned an unsupported upload address.");
+  const uploaded = await fetch(url, { method: "PUT", headers: { "Content-Type": mimeType }, body: bytes, redirect: "error", signal: AbortSignal.timeout(22000) });
+  if (!uploaded.ok) throw new HttpError(502, "The image could not be uploaded to Magic Hour.");
+  return item.file_path;
+}
+export async function migrateImage(asset, token) {
+  const source = await fetch(`${OPENAI_URL}/files/${encodeURIComponent(asset.fileId)}/content`, { headers: auth(), signal: AbortSignal.timeout(22000) });
+  if (!source.ok) throw new HttpError(400, "This source image expired. Attach it again to use it with your account.");
+  const bytes = Buffer.from(await source.arrayBuffer());
+  if (!bytes.length || bytes.length > 3000000) throw new HttpError(413, "Attach an image smaller than 3 MB.");
+  const extension = asset.name.split(".").at(-1).toLowerCase(), mime = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif" }[extension];
+  if (!mime) throw new HttpError(400, "Attach this source image again.");
+  return uploadImage(extension, mime, bytes, token);
+}
 export async function uploadDocument(name, mimeType, bytes, purpose = "user_data") {
   const form = new FormData();
   form.set("purpose", purpose);
@@ -84,21 +103,21 @@ export async function createText(prompt, assets) {
 }
 export function creation(plan, assets) {
   const images = assets.filter(asset => asset.kind === "image"), prompt = { prompt: plan.prompt };
-  if (plan.action === "text") return { kind: "text", tool: "create_text", args: {}, assets: assets.filter(asset => asset.kind === "document" || asset.text) };
-  if (plan.action === "music") return { kind: "audio", tool: "generate_music", args: { duration: 15, style: { ...prompt, instrumental: true } } };
+  if (plan.action === "text") return { kind: "text", tool: "create_text", estimatedCredits: 0, args: {}, assets: assets.filter(asset => asset.kind === "document" || asset.text) };
+  if (plan.action === "music") return { kind: "audio", tool: "generate_music", estimatedCredits: 15, args: { duration: 15, style: { ...prompt, instrumental: true } } };
   if (plan.action === "edit_image") {
     if (!images.length) throw new HttpError(400, "Add an image to edit first.");
-    return { kind: "image", tool: "edit_image", args: { image_count: 1, model: "flux-2-klein", resolution: "640px", aspect_ratio: plan.aspectRatio, style: prompt, assets: { image_file_paths: images.map(asset => asset.filePath) } } };
+    return { kind: "image", tool: "edit_image", estimatedCredits: 5, args: { image_count: 1, model: "flux-2-klein", resolution: "640px", aspect_ratio: plan.aspectRatio, style: prompt, assets: { image_file_paths: images.map(asset => asset.filePath) } } };
   }
   if (plan.action === "image" && images.length) throw new HttpError(400, "Your selected images should be used as inputs. Please request an image edit or remove them first.");
-  if (plan.action === "image") return { kind: "image", tool: "generate_image", args: { image_count: 1, model: "flux-2-klein", resolution: "640px", aspect_ratio: plan.aspectRatio, style: prompt } };
+  if (plan.action === "image") return { kind: "image", tool: "generate_image", estimatedCredits: 5, args: { image_count: 1, model: "flux-2-klein", resolution: "640px", aspect_ratio: plan.aspectRatio, style: prompt } };
   if (plan.action === "spoken_video") {
     if (plan.script.length > 1804) throw new HttpError(400, "The spoken script is too long for this video. Please shorten it without losing the words you need.");
     if (images.length !== 1 || !plan.script.trim()) throw new HttpError(400, "Add one prepared image and the words to be spoken.");
-    return { kind: "video", tool: "create_spoken_ad_video", args: { assets: { image_file_path: images[0].filePath }, script: plan.script, end_seconds: 5, model: "ltx-2.5", resolution: "480p" } };
+    return { kind: "video", tool: "create_spoken_ad_video", estimatedCredits: 240, args: { assets: { image_file_path: images[0].filePath }, script: plan.script, end_seconds: 5, model: "ltx-2.5", resolution: "480p" } };
   }
   if (plan.action === "video" && images.length > 1) throw new HttpError(400, "Choose one starting image for this video, or combine your images in an image edit first.");
-  if (plan.action === "video") return { kind: "video", tool: images.length ? "create_video_from_image" : "create_video_from_text", args: {
+  if (plan.action === "video") return { kind: "video", tool: images.length ? "create_video_from_image" : "create_video_from_text", estimatedCredits: 120, args: {
     end_seconds: 5, model: "ltx-2.5", resolution: "480p", style: prompt,
     ...(images.length ? { assets: { image_file_path: images[0].filePath } } : { aspect_ratio: plan.aspectRatio })
   } };

@@ -1,13 +1,19 @@
 import { randomUUID, createHash } from "node:crypto";
 import { missingConfig, HttpError, redis, key, get, put, owned, sessionId, trial, rateLimit, reserve, settle } from "../server/store.js";
-import { mcp, planRequest, creation, createText, uploadDocument } from "../server/integrations.js";
+import { mcp, planRequest, creation, createText, uploadDocument, uploadImage, migrateImage } from "../server/integrations.js";
+import { accountFor, verifyAccount, startAuth, finishAuth, disconnect } from "../server/auth.js";
 
-const signupUrl = "https://magichour.ai/sign-up?callbackUrl=%2Fcreate";
+const signupUrl = "/api/auth/start";
 const json = (res, status, value) => { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(value)); };
 const terminal = status => ["complete", "error", "canceled"].includes(status);
 const publicJob = job => ({ id: job.id, status: job.status, prompt: job.prompt, kind: job.kind, createdAt: job.createdAt, error: job.error || null,
   text: job.text || null, downloads: job.status === "complete" ? (job.downloads || []).map((_, index) => ({ url: `/api/download/${job.id}/${index}` })) : [] });
-const publicPlan = plan => ({ id: plan.id, summary: plan.summary, kind: plan.kind, tool: plan.tool, costLabel: "1 included trial creation", requiresConfirmation: true });
+const publicPlan = plan => ({ id: plan.id, summary: plan.summary, kind: plan.kind, tool: plan.tool, costLabel: plan.accountId ? (plan.kind === "text" ? "Writing is included. No Magic Hour credits." : `Estimated ${plan.estimatedCredits} Magic Hour credits. Final charge follows Magic Hour’s current pricing.`) : "1 included trial creation", requiresConfirmation: true });
+function accountToken(item, account) {
+  if (!item.accountId) return undefined;
+  if (item.accountId !== account?.id) throw new HttpError(401, "Sign in to the Magic Hour account that created this item.");
+  return account.token;
+}
 async function body(req) {
   if (!(req.headers["content-type"] || "").startsWith("application/json")) throw new HttpError(415, "Send this request as JSON.");
   const length = Number(req.headers["content-length"] || 0);
@@ -21,25 +27,36 @@ async function body(req) {
   for await (const chunk of req) { bytes += Buffer.byteLength(chunk); if (bytes > 4200000) throw new HttpError(413, "This upload is too large. Please use a document smaller than 3 MB."); chunks.push(Buffer.from(chunk)); }
   try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new HttpError(400, "The request could not be read."); }
 }
-async function assetsFor(sid, ids = [], jobIds = []) {
+async function assetsFor(sid, ids = [], jobIds = [], account) {
   if (!Array.isArray(ids) || !Array.isArray(jobIds) || ids.length + jobIds.length > 4) throw new HttpError(400, "Select up to four source items.");
   const assets = await Promise.all([...new Set(ids)].map(id => owned("asset", id, sid)));
+  for (const asset of assets) {
+    accountToken(asset, account);
+    if (account && !asset.accountId && asset.kind === "image" && asset.fileId) {
+      const copyId = `${asset.id}:${account.id}`;
+      let copy = await get("account-asset", copyId);
+      if (!copy) { copy = { filePath: await migrateImage(asset, account.token) }; await put("account-asset", copyId, copy, 86400); }
+      asset.filePath = copy.filePath;
+    }
+  }
   for (const id of [...new Set(jobIds)]) {
     const job = await owned("job", id, sid);
+    accountToken(job, account);
     if (job.status === "complete" && job.kind === "text" && job.text) { assets.push({ id: job.id, kind: "text", name: job.prompt, text: job.text }); continue; }
     if (job.status !== "complete" || !job.downloads?.length || job.kind !== "image") throw new HttpError(400, "Select a finished image or writing to use as an input.");
-    const refreshed = await refresh(job);
+    const refreshed = await refresh(job, account);
     if (refreshed.downloads?.[0]?.url) assets.push({ id: job.id, kind: "image", name: job.prompt, filePath: refreshed.downloads[0].url });
   }
   return assets;
 }
-async function refresh(job) {
+async function refresh(job, account) {
+  const token = accountToken(job, account);
   if (!job.projectId) {
     if (job.status === "submitting" && Date.now() - Date.parse(job.createdAt) > 90000) return settle({ ...job, status: "submission_unknown", error: "Submission could not be confirmed before the connection ended. To avoid duplicate charges, this request will not be submitted again automatically. Please contact support@magichour.ai." });
     return job;
   }
   if (terminal(job.status) && job.status !== "complete") return job;
-  const project = await mcp(`get_${job.kind}_project`, { id: job.projectId });
+  const project = await mcp(`get_${job.kind}_project`, { id: job.projectId }, token);
   if (!["draft", "queued", "rendering", "complete", "error", "canceled"].includes(project.status)) throw new HttpError(502, "Magic Hour returned an unknown project status.");
   const downloads = Array.isArray(project.downloads) ? project.downloads.filter(item => typeof item?.url === "string") : [];
   const updated = { ...job, status: project.status, downloads, error: project.error?.message || null };
@@ -50,14 +67,15 @@ function originFor(req) {
   const scheme = req.headers["x-forwarded-proto"] === "https" || process.env.NODE_ENV === "production" ? "https" : "http";
   return process.env.PUBLIC_APP_URL?.replace(/\/$/, "") || `${scheme}://${req.headers.host}`;
 }
-async function serveDownload(res, job, index) {
+async function serveDownload(res, job, index, account) {
+  accountToken(job, account);
   if (job.status !== "complete") throw new HttpError(409, "This result is not ready yet.");
   if (job.kind === "text") {
     if (index !== 0) throw new HttpError(404, "Download not found.");
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Content-Disposition", 'attachment; filename="create-here.txt"'); res.end(job.text); return;
   }
-  const latest = await refresh(job), download = latest.downloads?.[index];
+  const latest = await refresh(job, account), download = latest.downloads?.[index];
   if (!download) throw new HttpError(404, "Download not found.");
   const url = new URL(download.url);
   if (url.protocol !== "https:" || url.hostname !== "videos.magichour.ai" || url.port || url.username || url.password) throw new HttpError(502, "Magic Hour returned an unsupported download address.");
@@ -72,9 +90,6 @@ export default async function handler(req, res) {
     const url = new URL(req.url, originFor(req));
     const route = req.query?.route || url.searchParams.get("route");
     const path = (route ? "/api/" + (Array.isArray(route) ? route.join("/") : route).replace(/^\/+/, "") : url.pathname).replace(/\/$/, "");
-    if (req.method === "GET" && (path === "/api/auth/start" || path === "/api/auth/callback")) {
-      res.statusCode = 302; res.setHeader("Location", path === "/api/auth/start" ? signupUrl : "/"); res.end(); return;
-    }
     const missing = missingConfig();
     if (missing.length) {
       if (path === "/api/session") return json(res, 200, { configured: false, missing, trial: { remaining: 0, reserved: false }, account: null, jobs: [] });
@@ -82,26 +97,37 @@ export default async function handler(req, res) {
     }
     if (req.method === "POST" && req.headers.origin && req.headers.origin !== originFor(req)) throw new HttpError(403, "This request must come from create.here.");
     const sid = sessionId(req, res);
+    if (req.method === "GET" && path === "/api/auth/start") return await startAuth(res, sid, originFor(req));
+    if (req.method === "GET" && path === "/api/auth/callback") return await finishAuth(url, res, sid);
+    let account = await accountFor(sid);
     if (req.method === "POST") {
       await rateLimit(sid);
       const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() || req.socket?.remoteAddress || "unknown";
       await rateLimit(createHash("sha256").update(ip).digest("hex"), 60);
     }
     if (req.method === "GET" && path === "/api/session") {
+      if (account) {
+        try {
+          account = await verifyAccount(sid, account);
+        } catch (error) {
+          if (error.status === 401) account = null;
+          else { account.credits = null; }
+        }
+      }
       const ids = await redis("LRANGE", key("jobs", sid), 0, 49), jobs = [];
-      for (const id of ids || []) { const job = await get("job", id); if (job?.sid === sid) jobs.push(publicJob(job)); }
-      return json(res, 200, { configured: true, trial: await trial(sid), account: null, jobs });
+      for (const id of ids || []) { const job = await get("job", id); if (job?.sid === sid && (!job.accountId || job.accountId === account?.id)) jobs.push(publicJob(job)); }
+      return json(res, 200, { configured: true, trial: await trial(sid, account?.id), account: account ? { connected: true, id: account.id, email: account.email, credits: account.credits } : null, jobs });
     }
-    if (req.method === "POST" && path === "/api/auth/logout") { await redis("DEL", key("account", sid)); return json(res, 200, { ok: true }); }
+    if (req.method === "POST" && path === "/api/auth/logout") { await disconnect(sid); return json(res, 200, { ok: true }); }
     if (req.method === "POST" && path === "/api/uploads") {
       const data = await body(req), extension = String(data.name || "").split(".").at(-1).toLowerCase();
       const types = { jpg: "image", jpeg: "image", png: "image", webp: "image", gif: "image", mp4: "video", mov: "video", webm: "video", mp3: "audio", wav: "audio", m4a: "audio" };
       const kind = types[extension];
       if (!kind || !Number.isFinite(data.size) || data.size <= 0 || data.size > 30000000) throw new HttpError(400, "Choose an image, video or audio file smaller than 30 MB.");
-      const uploaded = await mcp("get_upload_urls", { items: [{ type: kind, extension }] }), item = uploaded.items?.[0];
+      const uploaded = await mcp("get_upload_urls", { items: [{ type: kind, extension }] }, account?.token), item = uploaded.items?.[0];
       if (!item?.upload_url || !item.file_path) throw new HttpError(502, "Magic Hour could not prepare the upload.");
       const id = randomUUID();
-      await put("asset", id, { id, sid, kind, name: String(data.name).slice(0, 180), filePath: item.file_path });
+      await put("asset", id, { id, sid, kind, name: String(data.name).slice(0, 180), filePath: item.file_path, ...(account ? { accountId: account.id } : {}) });
       return json(res, 200, { assetId: id, uploadUrl: item.upload_url, method: "PUT", kind });
     }
     if (req.method === "POST" && path === "/api/documents") {
@@ -113,55 +139,53 @@ export default async function handler(req, res) {
       const image = mime.startsWith("image/"), kind = image ? "image" : "document";
       let filePath;
       if (image) {
-        const presigned = await mcp("get_upload_urls", { items: [{ type: "image", extension }] }), item = presigned.items?.[0];
-        if (!item?.upload_url || !item.file_path) throw new HttpError(502, "Magic Hour could not prepare your image upload.");
-        const uploadUrl = new URL(item.upload_url);
-        if (uploadUrl.protocol !== "https:" || uploadUrl.hostname !== "videos.magichour.ai" || uploadUrl.port || uploadUrl.username || uploadUrl.password) throw new HttpError(502, "Magic Hour returned an unsupported upload address.");
-        const uploaded = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": mime }, body: bytes, redirect: "error", signal: AbortSignal.timeout(22000) });
-        if (!uploaded.ok) throw new HttpError(502, "The image could not be uploaded to Magic Hour.");
-        filePath = item.file_path;
+        filePath = await uploadImage(extension, mime, bytes, account?.token);
       }
       const file = await uploadDocument(String(data.name).slice(0, 180), mime, bytes, image ? "vision" : "user_data"), id = randomUUID();
       if (!file.id) throw new HttpError(502, "The source file could not be uploaded.");
-      await put("asset", id, { id, sid, kind, name: String(data.name).slice(0, 180), fileId: file.id, ...(filePath ? { filePath } : {}) }, 86400);
+      await put("asset", id, { id, sid, kind, name: String(data.name).slice(0, 180), fileId: file.id, ...(filePath ? { filePath } : {}), ...(account ? { accountId: account.id } : {}) }, 86400);
       return json(res, 200, { assetId: id, kind, note: image ? "Your image will be used as a visual input." : extension === "pdf" ? "PDF text and page images will inform your request." : "Document text will inform your request; embedded images are not read." });
     }
     if (req.method === "POST" && path === "/api/plan") {
+      if (account) account = await verifyAccount(sid, account);
       const data = await body(req), prompt = typeof data.prompt === "string" ? data.prompt.trim() : "";
       if (!prompt || prompt.length > 6000) throw new HttpError(400, "Describe what you want to create in up to 6,000 characters.");
-      const allowance = await trial(sid);
-      if (!allowance.remaining) throw new HttpError(402, "Your included creation is complete. Continue creating with Magic Hour.", { signupUrl, continueUrl: "https://magichour.ai/create" });
+      const allowance = await trial(sid, account?.id);
+      if (!account && !allowance.remaining) throw new HttpError(402, "Sign in with Magic Hour to keep creating here.", { signupUrl });
       if (allowance.reserved) throw new HttpError(409, "Your creation is still in progress. Resume it in your workspace.");
-      const assets = await assetsFor(sid, data.assetIds, data.selectedJobIds);
-      const history = await get("conversation", sid) || [];
+      const assets = await assetsFor(sid, data.assetIds, data.selectedJobIds, account);
+      const conversationId = account ? `${sid}:${account.id}` : sid;
+      const history = await get("conversation", conversationId) || [];
       const result = await planRequest(prompt, assets, history.slice(-6));
-      await put("conversation", sid, [...history, { request: prompt, response: result.action === "clarify" ? result.question : result.summary }].slice(-6));
+      await put("conversation", conversationId, [...history, { request: prompt, response: result.action === "clarify" ? result.question : result.summary }].slice(-6));
       if (result.action === "clarify") return json(res, 200, { clarification: { question: result.question || "What would you like the finished result to look like?" } });
       if (!Array.isArray(result.inputIds) || result.inputIds.some(id => !assets.some(asset => asset.id === id))) throw new HttpError(502, "The agent selected an unavailable source. Please try again.");
       const recipe = creation(result, assets);
-      const plan = { ...result, ...recipe, id: randomUUID(), sid, assetIds: assets.map(asset => asset.id), prompt, generationPrompt: result.prompt };
+      const plan = { ...result, ...recipe, id: randomUUID(), sid, ...(account ? { accountId: account.id } : {}), assetIds: assets.map(asset => asset.id), prompt, generationPrompt: result.prompt };
       await put("plan", plan.id, plan, 1800);
       return json(res, 200, { plan: publicPlan(plan) });
     }
     if (req.method === "POST" && path === "/api/generate") {
+      if (account) account = await verifyAccount(sid, account);
       const data = await body(req), plan = await owned("plan", data.planId, sid);
-      const job = { id: randomUUID(), sid, kind: plan.kind, prompt: plan.prompt, tool: plan.tool, status: "submitting", createdAt: new Date().toISOString(), downloads: [] };
+      if ((plan.accountId || null) !== (account?.id || null)) throw new HttpError(409, "Your account changed. Review a new plan before creating.");
+      const job = { id: randomUUID(), sid, ...(plan.accountId ? { accountId: plan.accountId } : {}), kind: plan.kind, prompt: plan.prompt, tool: plan.tool, status: "submitting", createdAt: new Date().toISOString(), downloads: [] };
       const [state, id] = await reserve(sid, plan, job);
-      if (state === "existing") return json(res, 200, { job: publicJob(await owned("job", id, sid)) });
-      if (state === "exhausted") throw new HttpError(402, "Your included creation is complete. Continue with Magic Hour.", { signupUrl, continueUrl: "https://magichour.ai/create" });
-      if (state === "busy") return json(res, 409, { error: "Your other creation is still in progress.", job: publicJob(await owned("job", id, sid)) });
+      if (state === "existing") { const existing = await owned("job", id, sid); accountToken(existing, account); return json(res, 200, { job: publicJob(existing) }); }
+      if (state === "exhausted") throw new HttpError(402, "Sign in with Magic Hour to keep creating here.", { signupUrl });
+      if (state === "busy") { const pending = await owned("job", id, sid); accountToken(pending, account); return json(res, 409, { error: "Your other creation is still in progress.", job: publicJob(pending) }); }
       if (state !== "created") throw new HttpError(404, "This plan expired. Please describe your creation again.");
       try {
         if (plan.kind === "text") { job.text = await createText(plan.generationPrompt, plan.assets || []); job.status = "complete"; job.downloads = [{}]; }
         else {
-          const result = await mcp(plan.tool, plan.args);
+          const result = await mcp(plan.tool, plan.args, account?.token);
           if (!result.id) throw new HttpError(502, "Magic Hour did not return a project ID.");
           job.projectId = result.id; job.status = "queued";
         }
       } catch (error) {
         const rejected = error.definiteRejection || (error.upstreamStatus >= 400 && error.upstreamStatus < 500);
         job.status = rejected ? "error" : "submission_unknown";
-        job.error = rejected ? "The service rejected this creation. Your included creation remains available." : "The connection ended before submission was confirmed. To avoid duplicate charges, this request will not be submitted again automatically. Please contact support@magichour.ai.";
+        job.error = rejected ? (job.accountId ? "Magic Hour rejected this creation. Check your account credits and inputs, then try again." : "The service rejected this creation. Your included creation remains available.") : "The connection ended before submission was confirmed. To avoid duplicate charges, this request will not be submitted again automatically. Please contact support@magichour.ai.";
         const saved = await settle(job);
         return json(res, 200, { job: publicJob(saved) });
       }
@@ -170,10 +194,10 @@ export default async function handler(req, res) {
     const jobMatch = path.match(/^\/api\/jobs\/([a-f0-9-]{36})$/);
     if (req.method === "GET" && jobMatch) {
       const job = await owned("job", jobMatch[1], sid);
-      return json(res, 200, { job: publicJob(await refresh(job)) });
+      return json(res, 200, { job: publicJob(await refresh(job, account)) });
     }
     const downloadMatch = path.match(/^\/api\/download\/([a-f0-9-]{36})\/(\d+)$/);
-    if (req.method === "GET" && downloadMatch) return await serveDownload(res, await owned("job", downloadMatch[1], sid), Number(downloadMatch[2]));
+    if (req.method === "GET" && downloadMatch) return await serveDownload(res, await owned("job", downloadMatch[1], sid), Number(downloadMatch[2]), account);
     throw new HttpError(404, "This page was not found.");
   } catch (error) {
     if (res.headersSent) { res.end(); return; }
