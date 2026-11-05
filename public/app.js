@@ -840,7 +840,7 @@ async function closeAuth(){
 }
 $$('[data-auth-trigger]').forEach(button=>button.addEventListener('click',()=>openAuth(button)));
 $('#auth-close').addEventListener('click',closeAuth);
-$$('[data-auth-provider]').forEach(link=>link.addEventListener('click',event=>{
+$$('[data-auth-provider],#auth-switch').forEach(link=>link.addEventListener('click',event=>{
   const popup=window.open('about:blank','_blank','popup,width=480,height=720');
   if(!popup)return;
   popup.opener=null;popup.location.href=link.href;event.preventDefault();
@@ -1192,7 +1192,7 @@ function showTrial(){
   $('#auth-title').textContent=connected?'Magic Hour connected':'Create your free account';
   $('#auth-description').textContent=connected?'New media creations use your Magic Hour credits. Writing is included. Your results stay in this workspace.':'Create a free Magic Hour account and keep creating here. Your work stays in this workspace.';
   $('#account-summary').hidden=!connected;$('#account-summary').textContent=connected?(account.email||'Your Magic Hour account'):'';
-  $$('[data-auth-provider],#auth-terms').forEach(element=>element.hidden=connected);$('#auth-disconnect').hidden=!connected;
+  $$('[data-auth-provider],#auth-terms').forEach(element=>element.hidden=connected);$('#auth-switch').hidden=!connected;$('#auth-disconnect').hidden=!connected;
   $$('.top-actions [data-auth-trigger],.mobile-signup').forEach(button=>button.hidden=connected);
   const trigger=$('.bottom-nav [data-auth-trigger]');trigger.querySelector('.nav-label').textContent=connected?'My account':'Sign Up / Log In';trigger.setAttribute('aria-label',connected?'My account':'Sign Up / Log In');trigger.dataset.tip=connected?'My account':'Sign Up / Log In';
 }

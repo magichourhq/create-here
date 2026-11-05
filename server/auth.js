@@ -43,7 +43,7 @@ export async function verifyAccount(sid, account) {
   }
 }
 
-export async function startAuth(res, sid, origin, { provider, popup = false } = {}) {
+export async function startAuth(res, sid, origin, { provider, popup = false, prompt } = {}) {
   const redirect = `${origin.replace(/\/$/, "")}/api/auth/callback`;
   const clientKey = createHash("sha256").update(origin).digest("hex");
   let client = await get("oauth-client", clientKey);
@@ -62,6 +62,7 @@ export async function startAuth(res, sid, origin, { provider, popup = false } = 
   url.search = new URLSearchParams({ response_type: "code", client_id: client.client_id, redirect_uri: redirect, state,
     code_challenge: createHash("sha256").update(verifier).digest("base64url"), code_challenge_method: "S256", resource }).toString();
   if (provider === "google" || provider === "email") url.searchParams.set("provider", provider);
+  if (prompt === "consent") url.searchParams.set("prompt", prompt);
   res.statusCode = 302; res.setHeader("Location", url.href); res.end();
 }
 

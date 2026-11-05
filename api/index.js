@@ -97,7 +97,7 @@ export default async function handler(req, res) {
     }
     if (req.method === "POST" && req.headers.origin && req.headers.origin !== originFor(req)) throw new HttpError(403, "This request must come from create.here.");
     const sid = sessionId(req, res);
-    if (req.method === "GET" && path === "/api/auth/start") return await startAuth(res, sid, originFor(req), { provider: url.searchParams.get("provider"), popup: url.searchParams.get("popup") === "1" });
+    if (req.method === "GET" && path === "/api/auth/start") return await startAuth(res, sid, originFor(req), { provider: url.searchParams.get("provider"), popup: url.searchParams.get("popup") === "1", prompt: url.searchParams.get("prompt") });
     if (req.method === "GET" && path === "/api/auth/callback") return await finishAuth(url, res, sid);
     let account = await accountFor(sid);
     if (req.method === "POST") {
