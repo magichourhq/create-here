@@ -603,6 +603,7 @@ function setGenerationLocked(locked){
 }
 function refreshGenerationView(){
   const visible=generationItems.length>0&&!showingHome;
+  if(!$('#request-open').hidden&&!generationItems.some(item=>item.status==='complete'))showRequestMessage('');
   workspace.classList.toggle('has-result',visible);
   workspace.classList.toggle('generating',visible&&running);
   $('#generation').hidden=!visible;$('#template-stage').inert=visible;
@@ -1196,7 +1197,14 @@ document.addEventListener('visibilitychange',syncHomePreviewVideos);homePreviewM
 
 let sessionState=null,pendingPlan=null,referenceJobIds=[],clarificationPrompt='';
 const requestMessage=$('#request-message'),planDialog=$('#plan-dialog');
-function showRequestMessage(text,retry=false){requestMessage.textContent=text;$('#processing-info').hidden=!text;dock.classList.toggle('has-status',!!text);$('#request-retry').hidden=!retry;updatePrompt()}
+function showRequestMessage(text,retry=false){requestMessage.textContent=text;$('#processing-info').hidden=!text;dock.classList.toggle('has-status',!!text);$('#request-retry').hidden=!retry;$('#request-open').hidden=true;updatePrompt()}
+$('#request-open').addEventListener('click',()=>{
+  const item=generationItems.filter(item=>item.status==='complete').sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0];
+  if(!item){showRequestMessage('');return}
+  $('#session-button').click();
+  if(expandedStack)closeStackFocus();
+  revealGeneration(item,false);openGenerationViewer(item);
+});
 $$('[data-new-creation]').forEach(button=>button.addEventListener('click',()=>{
   if(running||planning){toast('Wait for your current request to finish.');return}
   goHome();
@@ -1291,7 +1299,7 @@ async function displayJob(job,submitted=false){
   const first=generationItems.length===0;
   running=true;showingHome=false;
   const request=++generationRequest,item=await makeGeneration(request,job.kind);if(!item){running=false;return;}
-  item.jobId=job.id;item.prompt=job.prompt||promptInput.value;item.submitted=submitted;
+  item.jobId=job.id;item.createdAt=job.createdAt;item.prompt=job.prompt||promptInput.value;item.submitted=submitted;
   $('#workspace-name').textContent='Your creations';syncSessionFolder();
   applyJob(item,job);requestAnimationFrame(()=>revealGeneration(item,first));
   if(!['complete','error','canceled','submission_unknown'].includes(job.status)){
@@ -1316,7 +1324,7 @@ function applyJob(item,job){
     }else if(job.kind==='text'){item.image.hidden=true;const text=document.createElement('p');text.className='writing-preview';text.textContent=job.text;item.card.prepend(text);}
     else{item.image.src='assets/b1ae1.png';item.progress.hidden=false;item.progress.textContent='Music · Play';}
     item.card.setAttribute('aria-label',`Open generated ${job.kind}`);
-    showRequestMessage('Your creation is ready. Open it to preview or download.');
+    showRequestMessage('Your creation is ready.');$('#request-open').hidden=false;
   }else if(item.status==='error'){
     item.progress.textContent=['submitting','submission_unknown'].includes(job.status)?'Needs attention':'Could not create';item.element.classList.add('generation-failed');
     const retry=item.submitted&&['error','canceled'].includes(job.status);
