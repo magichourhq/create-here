@@ -1178,6 +1178,7 @@ function showTrial(){
 }
 $('#auth-disconnect').addEventListener('click',async()=>{try{await api('/api/auth/logout',{});location.reload()}catch(error){toast(error.message)}});
 window.addEventListener('focus',()=>{if(sessionState?.configured)loadSession()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&sessionState?.configured)loadSession()});
 async function uploadAttachment(item){
   if(item.assetId)return item.assetId;
   const file=item.file;
