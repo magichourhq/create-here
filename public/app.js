@@ -831,7 +831,7 @@ const composerObserver=new ResizeObserver(entries=>{
 composerObserver.observe(form);composerObserver.observe(dock);
 
 // Open the auth UI only from the explicitly designated account/navigation controls.
-const authDialog=$('#auth-dialog');let authMotion=null,authReturnFocus=null,authClosing=false;
+const authDialog=$('#auth-dialog');let authMotion=null,authReturnFocus=null,authClosing=false,emailChallenge=null,emailAuthBusy=null,emailResendTimer=null;
 function openAuth(trigger){
   if(authDialog.open)return;
   authReturnFocus=mobileLayout.matches&&sidebar.contains(trigger)?$('#mobile-menu-button'):trigger;
@@ -850,10 +850,38 @@ async function closeAuth(){
 $$('[data-auth-trigger]').forEach(button=>button.addEventListener('click',()=>openAuth(button)));
 $('#auth-close').addEventListener('click',closeAuth);
 $$('[data-auth-provider],#auth-switch').forEach(link=>link.addEventListener('click',event=>{
+  if(emailAuthBusy){event.preventDefault();return}
   const popup=window.open('about:blank','_blank','popup,width=480,height=720');
   if(!popup)return;
   popup.opener=null;popup.location.href=link.href;event.preventDefault();
 }));
+async function handleEmailAuth(action){
+  if(emailAuthBusy)return;
+  emailAuthBusy=action;$('#auth-email-error').hidden=true;showTrial();
+  try{
+    if(action==='send'){
+      const result=await api('/api/auth/email/start',{email:$('#auth-email').value});
+      if(sessionState?.account?.connected)return;
+      emailChallenge=result;$('#auth-email').value=result.email;$('#auth-code').value='';
+      clearTimeout(emailResendTimer);emailResendTimer=setTimeout(()=>{emailResendTimer=null;showTrial()},20000);
+    }else{
+      await api('/api/auth/email/verify',{challenge:emailChallenge.challenge,code:$('#auth-code').value});
+      emailChallenge=null;clearTimeout(emailResendTimer);emailResendTimer=null;
+      await loadSession();
+    }
+  }catch(error){$('#auth-email-error').textContent=error.message;$('#auth-email-error').hidden=false}
+  finally{
+    emailAuthBusy=null;showTrial();
+    if(authDialog.open&&!sessionState?.account?.connected)$(emailChallenge?'#auth-code':'#auth-email').focus({preventScroll:true});
+  }
+}
+$('#auth-email-form').addEventListener('submit',event=>{event.preventDefault();handleEmailAuth(emailChallenge?'verify':'send')});
+$('#auth-code').addEventListener('input',event=>{event.target.value=event.target.value.normalize('NFKC').replace(/\D/g,'').slice(0,6);$('#auth-email-error').hidden=true});
+$('#auth-code-resend').addEventListener('click',()=>{if(!emailResendTimer)handleEmailAuth('send')});
+$('#auth-code-back').addEventListener('click',()=>{
+  if(emailAuthBusy)return;
+  emailChallenge=null;clearTimeout(emailResendTimer);emailResendTimer=null;$('#auth-code').value='';$('#auth-email-error').hidden=true;showTrial();$('#auth-email').focus({preventScroll:true});
+});
 const authChannel=new BroadcastChannel('create-here-auth');
 authChannel.addEventListener('message',event=>{if(event.data==='connected')loadSession()});
 if(new URLSearchParams(location.search).get('auth')==='complete'){
@@ -1207,12 +1235,18 @@ function showTrial(){
   const remaining=sessionState?.trial?.remaining??1;
   const account=sessionState?.account,connected=Boolean(account?.connected);
   $('#trial-status').textContent=connected?(account.credits===null?'Magic Hour connected. Credit balance is temporarily unavailable.':`${account.credits.toLocaleString()} Magic Hour credits. Keep creating here.`):remaining?'Your first creation is included. No sign-up needed.':'Your included creation is used. Sign in to keep creating here.';
-  $('#auth-title').textContent=connected?'Magic Hour connected':'Create your free account';
-  $('#auth-description').textContent=connected?'Your creations are saved to this Magic Hour account. Sign in on another browser or device to find them here. New media uses your Magic Hour credits. Writing is included.':'Create a free Magic Hour account to keep creating here and save your creations across devices.';
+  const checkingCode=!connected&&Boolean(emailChallenge);
+  $('#auth-title').textContent=connected?'Magic Hour connected':checkingCode?'Check your email':'Create your free account';
+  $('#auth-description').textContent=connected?'Your creations are saved to this Magic Hour account. Sign in on another browser or device to find them here. New media uses your Magic Hour credits. Writing is included.':checkingCode?`Enter the 6-digit code we sent to ${emailChallenge.email}.`:'Create a free Magic Hour account to keep creating here and save your creations across devices.';
   $('#save-description').textContent=connected?'Saved to your account.':'Creations stay in this browser.';
   $('#save-signin').textContent=connected?'View account':'Sign in to save across devices';$('#account-credits').hidden=!connected;
   $('#account-summary').hidden=!connected;$('#account-summary').textContent=connected?(account.email||'Your Magic Hour account'):'';
-  $$('[data-auth-provider],#auth-terms').forEach(element=>element.hidden=connected);$('#auth-switch').hidden=!connected;$('#auth-disconnect').hidden=!connected;
+  $$('[data-auth-provider],#auth-email-divider').forEach(element=>element.hidden=connected||checkingCode);$('#auth-terms').hidden=connected;$('#auth-switch').hidden=!connected;$('#auth-disconnect').hidden=!connected;
+  $('#auth-connect').setAttribute('aria-disabled',String(Boolean(emailAuthBusy)));
+  $('#auth-email-form').hidden=connected;$('#auth-email').hidden=checkingCode;$('#auth-email').disabled=emailAuthBusy||checkingCode;$('#auth-email').required=!checkingCode;
+  $('#auth-code').hidden=!checkingCode;$('#auth-code').disabled=emailAuthBusy||!checkingCode;$('#auth-code').required=checkingCode;
+  $('#auth-code-options').hidden=!checkingCode;$('#auth-code-resend').disabled=emailAuthBusy||Boolean(emailResendTimer);$('#auth-code-back').disabled=emailAuthBusy;
+  $('#auth-email-submit').disabled=Boolean(emailAuthBusy);$('#auth-email-submit').textContent=emailAuthBusy?(emailAuthBusy==='send'?'Sending code…':'Checking…'):(checkingCode?'Verify and continue':'Continue');
   $$('.top-actions [data-auth-trigger],.mobile-signup').forEach(button=>button.hidden=connected);
   const trigger=$('.bottom-nav [data-auth-trigger]');trigger.querySelector('.nav-label').textContent=connected?'My account':'Sign Up / Log In';trigger.setAttribute('aria-label',connected?'My account':'Sign Up / Log In');trigger.dataset.tip=connected?'My account':'Sign Up / Log In';
   syncPlanBalance();

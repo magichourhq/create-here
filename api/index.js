@@ -1,7 +1,7 @@
 import { randomUUID, createHash } from "node:crypto";
 import { missingConfig, HttpError, redis, key, get, put, owned, sessionId, trial, rateLimit, reserve, settle, claimJobs, setJobsDeleted } from "../server/store.js";
 import { mcp, planRequest, creation, createText, uploadDocument, uploadImage, migrateImage } from "../server/integrations.js";
-import { accountFor, verifyAccount, startAuth, finishAuth, disconnect } from "../server/auth.js";
+import { accountFor, verifyAccount, startAuth, finishAuth, startEmailAuth, verifyEmailAuth, disconnect } from "../server/auth.js";
 
 const signupUrl = "/api/auth/start";
 const json = (res, status, value) => { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(value)); };
@@ -103,6 +103,11 @@ export default async function handler(req, res) {
       await rateLimit(sid);
       const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() || req.socket?.remoteAddress || "unknown";
       await rateLimit(createHash("sha256").update(ip).digest("hex"), 60);
+      if (path === "/api/auth/email/start" || path === "/api/auth/email/verify") {
+        const data = await body(req), context = { ip, userAgent: req.headers["user-agent"] || "" };
+        if (path === "/api/auth/email/start") return json(res, 200, await startEmailAuth(sid, originFor(req), data.email, context));
+        await verifyEmailAuth(sid, data.challenge, data.code, context); return json(res, 200, { connected: true });
+      }
     }
     if (req.method === "GET" && path === "/api/session") {
       if (account) {
