@@ -1,14 +1,14 @@
 import { randomUUID, createHash } from "node:crypto";
-import { missingConfig, HttpError, redis, key, get, put, owned, sessionId, trial, rateLimit, reserve, settle } from "../server/store.js";
+import { missingConfig, HttpError, redis, key, get, put, owned, sessionId, trial, rateLimit, reserve, settle, claimJobs, setJobsDeleted } from "../server/store.js";
 import { mcp, planRequest, creation, createText, uploadDocument, uploadImage, migrateImage } from "../server/integrations.js";
 import { accountFor, verifyAccount, startAuth, finishAuth, startEmailAuth, verifyEmailAuth, disconnect } from "../server/auth.js";
 
 const signupUrl = "/api/auth/start";
 const json = (res, status, value) => { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(value)); };
 const terminal = status => ["complete", "error", "canceled"].includes(status);
-const publicJob = job => ({ id: job.id, status: job.status, prompt: job.prompt, kind: job.kind, createdAt: job.createdAt, error: job.error || null,
+const publicJob = job => ({ id: job.id, status: job.status, prompt: job.prompt, kind: job.kind, createdAt: job.createdAt, error: job.error || null, errorCode: job.errorCode || null,
   text: job.text || null, downloads: job.status === "complete" ? (job.downloads || []).map((_, index) => ({ url: `/api/download/${job.id}/${index}` })) : [] });
-const publicPlan = plan => ({ id: plan.id, summary: plan.summary, kind: plan.kind, tool: plan.tool, costLabel: plan.accountId ? (plan.kind === "text" ? "Writing is included. No Magic Hour credits." : `Estimated ${plan.estimatedCredits} Magic Hour credits. Final charge follows Magic Hour’s current pricing.`) : "1 included trial creation", requiresConfirmation: true });
+const publicPlan = plan => ({ id: plan.id, summary: plan.summary, kind: plan.kind, tool: plan.tool, estimatedCredits: plan.estimatedCredits, costLabel: plan.accountId ? (plan.kind === "text" ? "Writing is included. No Magic Hour credits." : `Estimated ${plan.estimatedCredits} Magic Hour credits. Final charge follows Magic Hour’s current pricing.`) : "1 included trial creation", requiresConfirmation: true });
 function accountToken(item, account) {
   if (!item.accountId) return undefined;
   if (item.accountId !== account?.id) throw new HttpError(401, "Sign in to the Magic Hour account that created this item.");
@@ -40,7 +40,7 @@ async function assetsFor(sid, ids = [], jobIds = [], account) {
     }
   }
   for (const id of [...new Set(jobIds)]) {
-    const job = await owned("job", id, sid);
+    const job = await owned("job", id, sid, account?.id);
     accountToken(job, account);
     if (job.status === "complete" && job.kind === "text" && job.text) { assets.push({ id: job.id, kind: "text", name: job.prompt, text: job.text }); continue; }
     if (job.status !== "complete" || !job.downloads?.length || job.kind !== "image") throw new HttpError(400, "Select a finished image or writing to use as an input.");
@@ -60,7 +60,6 @@ async function refresh(job, account) {
   if (!["draft", "queued", "rendering", "complete", "error", "canceled"].includes(project.status)) throw new HttpError(502, "Magic Hour returned an unknown project status.");
   const downloads = Array.isArray(project.downloads) ? project.downloads.filter(item => typeof item?.url === "string") : [];
   const updated = { ...job, status: project.status, downloads, error: project.error?.message || null };
-  if (job.status === "complete") { await put("job", job.id, updated); return updated; }
   return settle(updated);
 }
 function originFor(req) {
@@ -119,9 +118,25 @@ export default async function handler(req, res) {
           else { account.credits = null; }
         }
       }
-      const ids = await redis("LRANGE", key("jobs", sid), 0, 49), jobs = [];
-      for (const id of ids || []) { const job = await get("job", id); if (job?.sid === sid && (!job.accountId || job.accountId === account?.id)) jobs.push(publicJob(job)); }
-      return json(res, 200, { configured: true, trial: await trial(sid, account?.id), account: account ? { connected: true, id: account.id, email: account.email, credits: account.credits } : null, jobs });
+      const offset = Number(url.searchParams.get("offset") || 0);
+      if (!Number.isSafeInteger(offset) || offset < 0) throw new HttpError(400, "Invalid history page.");
+      let ids = await redis("LRANGE", key("jobs", sid), 0, 49) || [];
+      let jobs = ids.length ? (await redis("MGET", ...ids.map(id => key("job", id)))).filter(Boolean).map(value => JSON.parse(value)) : [];
+      if (account) {
+        await claimJobs(sid, account.id, jobs);
+        ids = await redis("ZREVRANGE", key("account-jobs", account.id), offset, offset + 50) || [];
+        jobs = ids.length ? (await redis("MGET", ...ids.slice(0, 50).map(id => key("job", id)))).filter(Boolean).map(value => JSON.parse(value)) : [];
+      }
+      jobs = jobs.filter(job => !job.deleted && ((job.ownerAccountId || job.accountId) ? (job.ownerAccountId || job.accountId) === account?.id : job.sid === sid));
+      return json(res, 200, { configured: true, trial: await trial(sid, account?.id), account: account ? { connected: true, id: account.id, email: account.email, credits: account.credits } : null, jobs: jobs.map(publicJob), hasMore: Boolean(account && ids.length > 50) });
+    }
+    if (account && (path.startsWith("/api/jobs/") || path.startsWith("/api/download/"))) account = await verifyAccount(sid, account);
+    if (req.method === "POST" && ["/api/jobs/delete", "/api/jobs/restore"].includes(path)) {
+      const data = await body(req);
+      if (!Array.isArray(data.ids) || !data.ids.length || data.ids.length > 50) throw new HttpError(400, "Select between one and 50 creations.");
+      const jobs = await Promise.all([...new Set(data.ids)].map(id => owned("job", id, sid, account?.id, true)));
+      await setJobsDeleted(sid, account?.id, jobs, path.endsWith("/delete"));
+      return json(res, 200, { ok: true });
     }
     if (req.method === "POST" && path === "/api/auth/logout") { await disconnect(sid); return json(res, 200, { ok: true }); }
     if (req.method === "POST" && path === "/api/uploads") {
@@ -174,11 +189,11 @@ export default async function handler(req, res) {
       if (account) account = await verifyAccount(sid, account);
       const data = await body(req), plan = await owned("plan", data.planId, sid);
       if ((plan.accountId || null) !== (account?.id || null)) throw new HttpError(409, "Your account changed. Review a new plan before creating.");
-      const job = { id: randomUUID(), sid, ...(plan.accountId ? { accountId: plan.accountId } : {}), kind: plan.kind, prompt: plan.prompt, tool: plan.tool, status: "submitting", createdAt: new Date().toISOString(), downloads: [] };
+      const job = { id: randomUUID(), sid, ...(plan.accountId ? { accountId: plan.accountId, ownerAccountId: plan.accountId } : {}), kind: plan.kind, prompt: plan.prompt, tool: plan.tool, status: "submitting", createdAt: new Date().toISOString(), downloads: [] };
       const [state, id] = await reserve(sid, plan, job);
-      if (state === "existing") { const existing = await owned("job", id, sid); accountToken(existing, account); return json(res, 200, { job: publicJob(existing) }); }
+      if (state === "existing") { const existing = await owned("job", id, sid, account?.id); accountToken(existing, account); return json(res, 200, { job: publicJob(existing) }); }
       if (state === "exhausted") throw new HttpError(402, "Sign in with Magic Hour to keep creating here.", { signupUrl });
-      if (state === "busy") { const pending = await owned("job", id, sid); accountToken(pending, account); return json(res, 409, { error: "Your other creation is still in progress.", job: publicJob(pending) }); }
+      if (state === "busy") { const pending = await owned("job", id, sid, account?.id); accountToken(pending, account); return json(res, 409, { error: "Your other creation is still in progress.", job: publicJob(pending) }); }
       if (state !== "created") throw new HttpError(404, "This plan expired. Please describe your creation again.");
       try {
         if (plan.kind === "text") { job.text = await createText(plan.generationPrompt, plan.assets || []); job.status = "complete"; job.downloads = [{}]; }
@@ -190,7 +205,8 @@ export default async function handler(req, res) {
       } catch (error) {
         const rejected = error.definiteRejection || (error.upstreamStatus >= 400 && error.upstreamStatus < 500);
         job.status = rejected ? "error" : "submission_unknown";
-        job.error = rejected ? (job.accountId ? "Magic Hour rejected this creation. Check your account credits and inputs, then try again." : "The service rejected this creation. Your included creation remains available.") : "The connection ended before submission was confirmed. To avoid duplicate charges, this request will not be submitted again automatically. Please contact support@magichour.ai.";
+        job.errorCode = job.accountId && error.insufficientCredits ? "insufficient_credits" : null;
+        job.error = job.errorCode ? "You need more Magic Hour credits for this creation. Get credits, then try again. Your request is still here." : rejected ? (job.accountId ? "Magic Hour rejected this creation. Check your inputs and account access, then try again." : "The service rejected this creation. Your included creation remains available.") : "The connection ended before submission was confirmed. To avoid duplicate charges, this request will not be submitted again automatically. Please contact support@magichour.ai.";
         const saved = await settle(job);
         return json(res, 200, { job: publicJob(saved) });
       }
@@ -198,11 +214,11 @@ export default async function handler(req, res) {
     }
     const jobMatch = path.match(/^\/api\/jobs\/([a-f0-9-]{36})$/);
     if (req.method === "GET" && jobMatch) {
-      const job = await owned("job", jobMatch[1], sid);
+      const job = await owned("job", jobMatch[1], sid, account?.id);
       return json(res, 200, { job: publicJob(await refresh(job, account)) });
     }
     const downloadMatch = path.match(/^\/api\/download\/([a-f0-9-]{36})\/(\d+)$/);
-    if (req.method === "GET" && downloadMatch) return await serveDownload(res, await owned("job", downloadMatch[1], sid), Number(downloadMatch[2]), account);
+    if (req.method === "GET" && downloadMatch) return await serveDownload(res, await owned("job", downloadMatch[1], sid, account?.id), Number(downloadMatch[2]), account);
     throw new HttpError(404, "This page was not found.");
   } catch (error) {
     if (res.headersSent) { res.end(); return; }

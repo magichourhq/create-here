@@ -45,6 +45,7 @@
         <span class="nav-icon"><span class="ui-icon folder-icon" aria-hidden="true" data-icon-motion="moon-sway"></span></span>
         <span class="nav-label" id="session-name">Your creations</span>
       </button>
+      <button type="button" id="history-more" class="nav-button" aria-label="Load older creations" hidden><span class="nav-icon" aria-hidden="true">+</span><span class="nav-label">Load older creations</span></button>
     </nav>
     <div class="bottom-nav">
       <button id="theme-toggle" class="nav-button tip" data-tip="Switch theme" aria-label="Switch to dark theme" aria-pressed="false"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" overflow="visible" width="17" height="17" viewBox="0 0 17 17" fill="none" class="ui-icon motion-icon icon-sun" aria-hidden="true" focusable="false">
@@ -135,7 +136,7 @@
 <path id="action-enhance-Star-24" d="M12.4167 17.4167L12.6623 16.7528C12.9844 15.8824 13.1455 15.4471 13.463 15.1296C13.7805 14.8121 14.2157 14.6511 15.0862 14.329L15.75 14.0833L15.0862 13.8377C14.2157 13.5156 13.7805 13.3545 13.463 13.037C13.1455 12.7195 12.9844 12.2843 12.6623 11.4138L12.4167 10.75L12.171 11.4138C11.8489 12.2843 11.6879 12.7195 11.3704 13.037C11.0529 13.3545 10.6176 13.5156 9.74717 13.8377L9.08333 14.0833L9.74717 14.329C10.6176 14.6511 11.0529 14.8121 11.3704 15.1296C11.6879 15.4471 11.8489 15.8824 12.171 16.7528L12.4167 17.4167Z" stroke-width="1.5" stroke-linejoin="round" stroke="currentColor"/>
 <path id="action-enhance-Star-25" d="M3.25 15.75L3.43423 15.2521C3.67581 14.5993 3.7966 14.2728 4.03472 14.0347C4.27285 13.7966 4.59927 13.6758 5.25212 13.4342L5.75 13.25L5.25212 13.0658C4.59927 12.8242 4.27285 12.7034 4.03472 12.4653C3.7966 12.2272 3.67581 11.9007 3.43423 11.2479L3.25 10.75L3.06577 11.2479C2.82419 11.9007 2.7034 12.2272 2.46528 12.4653C2.22715 12.7034 1.90073 12.8242 1.24788 13.0658L0.75 13.25L1.24788 13.4342C1.90073 13.6758 2.22715 13.7966 2.46528 14.0347C2.7034 14.2728 2.82419 14.5993 3.06577 15.2521L3.25 15.75Z" stroke-width="1.5" stroke-linejoin="round" stroke="currentColor"/>
 </g>
-</svg></span><span>Enhance</span></button>
+</svg></span><span>Edit</span></button>
         <button type="button" class="selection-action" id="action-share"><span class="action-icon action-icon-share" aria-hidden="true"><svg aria-hidden="true" focusable="false" preserveAspectRatio="none" overflow="visible" style="display: block;" width="16.5" height="15.6667" viewBox="0 0 16.5 15.6667" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g id="action-share-elements">
 <path id="action-share-Ellipse-1911" d="M15.75 3.25C15.75 4.63071 14.6307 5.75 13.25 5.75C11.8693 5.75 10.75 4.63071 10.75 3.25C10.75 1.86929 11.8693 0.75 13.25 0.75C14.6307 0.75 15.75 1.86929 15.75 3.25Z" stroke-width="1.5" stroke="currentColor"/>
@@ -162,7 +163,7 @@
 </g>
 </svg></span></button>
       </div>
-      <div class="processing-info" id="processing-info" role="status" aria-live="polite" hidden><span class="status-dot" aria-hidden="true"></span><span id="request-message"></span><button type="button" class="pill" id="request-open" aria-controls="generation" hidden>View creation</button></div>
+      <div class="processing-info" id="processing-info" role="status" aria-live="polite" hidden><span class="status-dot" aria-hidden="true"></span><span id="request-message"></span><button type="button" class="pill" id="request-open" aria-controls="generation" hidden>View creation</button><a class="pill" id="request-credits" href="https://magichour.ai/pricing#credit-pack" target="_blank" rel="noopener" hidden>Get credits</a></div>
       <form class="composer" id="composer" aria-busy="false">
         <button type="submit" id="request-retry" class="reference-summary" hidden>Try again</button><button type="button" id="reference-summary" class="reference-summary" hidden></button>
         <div class="attachments" id="attachments" aria-label="Attached files" hidden></div>
@@ -183,6 +184,7 @@
 </svg><span class="spinner"></span><span class="stop-square"></span></button>
         </div>
       <p id="trial-status" role="status">Your first creation is included. No sign-up needed.</p>
+      <p id="save-status" style="margin:6px 16px 0;text-align:center;font-size:12px;line-height:1.4;color:var(--secondary)"><span id="save-description">Creations stay in this browser.</span> <button type="button" data-auth-trigger id="save-signin" style="font:inherit;color:inherit;text-decoration:underline">Sign in to save across devices</button></p>
       </form>
       <input type="file" id="file-input" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.ppt,.pptx,.txt" multiple hidden>
     </div>
@@ -208,7 +210,7 @@
     <button type="button" class="auth-close" id="auth-close" aria-label="Close authentication" autofocus><span class="auth-icon"><img src="assets/auth-c2321.svg" alt=""></span></button>
     <div class="auth-heading">
       <h2 id="auth-title">Create your free account</h2>
-      <p id="auth-description">Create a free Magic Hour account and keep creating here. Your work stays in this workspace.</p>
+      <p id="auth-description">Create a free Magic Hour account to keep creating here and save your creations across devices.</p>
       <p id="account-summary" hidden></p>
     </div>
     <div class="auth-content auth-providers">
@@ -226,14 +228,15 @@
       </form>
       <p id="auth-terms" style="margin:0;text-align:center;font-size:12px;line-height:1.5;color:var(--secondary)">By continuing, you agree to Magic Hour’s <a href="https://magichour.ai/terms-of-service" target="_blank" rel="noopener">Terms of Service</a> and <a href="https://magichour.ai/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>.</p>
       <a id="auth-switch" class="auth-provider" href="/api/auth/start?prompt=consent&amp;popup=1" target="_blank" rel="noopener" hidden>Switch account</a>
-      <button id="auth-disconnect" type="button" class="auth-provider" hidden>Sign out of this workspace</button>
+      <a id="account-credits" class="auth-provider" href="https://magichour.ai/pricing#credit-pack" target="_blank" rel="noopener" hidden>Get Magic Hour credits</a>
+      <button id="auth-disconnect" type="button" class="auth-provider" hidden>Sign out</button>
     </div>
   </dialog>
 
   <dialog id="plan-dialog" class="auth-dialog" aria-labelledby="plan-title">
     <button type="button" class="auth-close" id="plan-close" aria-label="Close creation plan">×</button>
     <div class="auth-heading"><h2 id="plan-title">Here’s the plan</h2><p id="plan-summary"></p></div>
-    <div class="auth-content"><p id="plan-cost"></p><p id="plan-remaining"></p><button type="button" class="auth-continue" id="plan-confirm">Create it</button><button type="button" class="reference-summary" id="plan-change">Change my request</button></div>
+    <div class="auth-content"><p id="plan-cost"></p><p id="plan-balance" role="status" style="overflow-wrap:anywhere" hidden></p><p id="plan-remaining"></p><div id="plan-credits" class="auth-providers" hidden><a class="auth-provider" href="https://magichour.ai/pricing#credit-pack" target="_blank" rel="noopener">Get credits</a><button type="button" class="auth-provider" id="plan-refresh">Refresh balance</button><p id="plan-credit-help" style="margin:0;font-size:13px;line-height:1.5;overflow-wrap:anywhere">Buy credits on Magic Hour, then return here. Your request stays here.</p></div><button type="button" class="auth-continue" id="plan-confirm">Create it</button><button type="button" class="reference-summary" id="plan-change">Change my request</button></div>
   </dialog>
 </body>
 </html>
