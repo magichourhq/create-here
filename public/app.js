@@ -176,20 +176,22 @@ function syncActionsMenu(){
   const selected=[...selectedGenerations],active=selected.length>0&&!mobileLayout.matches&&!$('#generation').hidden,multi=selected.length>1;
   const stacked=multi&&selected[0].stackId&&selected.every(item=>item.stackId===selected[0].stackId);
   const ready=selected.length>0&&selected.every(item=>item.status==='complete');
+  const editable=selected.every(item=>['image','text'].includes(item.kind));
   ['enhance','share','download'].forEach(action=>$('#action-'+action).disabled=!ready);
   $('#action-enhance').disabled=!ready||running;
+  $('#action-enhance').hidden=!editable;
   $('#action-stack').disabled=!ready;$('#action-stack').tabIndex=multi?0:-1;$('#action-stack').setAttribute('aria-hidden',String(!multi));
   $('#stack-action-label').textContent=stacked?'Unstack':'Stack';
   dock.style.setProperty('--stack-button-width',(stacked?98:82)+'px');
   actionsMenu.setAttribute('aria-label',selected.length>1?`Bulk actions for ${selected.length} generations`:'Actions for selected generation');
   actionsMenu.inert=!active;actionsMenu.setAttribute('aria-hidden',String(!active));form.inert=active;
-  const nextLayout=active?(multi?(stacked?'stacked':'bulk'):'single'):'none';
+  const nextLayout=active?(multi?(stacked?'stacked':'bulk'):'single')+(editable?'':'-readonly'):'none';
   if(nextLayout===actionsLayout)return;
   const revealStack=active&&multi&&!dock.classList.contains('has-multiple'),duration=active&&actionsLayout!=='none'?560:480;
   const before=dock.getBoundingClientRect();actionsAnimation?.cancel();
   stackRevealAnimation?.cancel();
   if(active&&actionsLayout==='none')dock.style.setProperty('--resting-composer-width',before.width+'px');
-  dock.style.setProperty('--actions-width',(multi?(stacked?508:492):398)+'px');dock.classList.toggle('has-multiple',multi);dock.classList.toggle('actions-open',active);
+  dock.style.setProperty('--actions-width',((multi?(stacked?508:492):398)-(editable?0:113))+'px');dock.classList.toggle('has-multiple',multi);dock.classList.toggle('actions-open',active);
   if(active){if(document.activeElement===promptInput)promptInput.blur()}
   else if(actionsMenu.contains(document.activeElement))canvasViewport.focus({preventScroll:true});
   actionsLayout=nextLayout;
@@ -501,7 +503,7 @@ function addGenerationCardActions(item){
   const imageResult=item.kind==='image';
   const overlay=document.createElement('div'),controls=document.createElement('div');
   overlay.className='generation-card-overlay';controls.className='generation-card-actions';controls.setAttribute('role','group');controls.setAttribute('aria-label',`Actions for generation ${item.id}`);
-  const actions=imageResult?[['enhance','Edit image','adf5e'],['download','Download','8dfd8']]:[['download','Download','8dfd8'],['enhance','Enhance','adf5e'],['share','Share','91cdd']];
+  const actions=[...(imageResult||item.kind==='text'?[['enhance',imageResult?'Edit image':'Edit writing','adf5e']]:[]),['download','Download','8dfd8'],...(!imageResult?[['share','Share','91cdd']]:[])];
   for(const [action,label,asset] of actions){
     const button=document.createElement('button'),icon=document.createElement('span'),image=document.createElement('img');
     button.type='button';button.className='generation-card-action '+(imageResult?'':'tip ')+(action==='download'?'card-download':'');button.dataset.action=action;button.setAttribute('aria-label',`${label} generation ${item.id}`);button.disabled=true;
@@ -725,7 +727,7 @@ async function zipSelection(files){
 async function downloadGenerations(items){if(items.length===1){const link=document.createElement('a');link.href=items[0].downloadUrl;link.download='generation';link.click();return;}const files=await selectionFiles(items);if(files.length===1)downloadBlob(files[0],files[0].name);else if(files.length)downloadBlob(await zipSelection(files),'generations.zip')}
 $('#action-download').addEventListener('click',()=>downloadGenerations([...selectedGenerations]).catch(()=>toast('Could not download the selection. Try again.')));
 async function enhanceGenerations(items){
-  if(!items.length||running)return;
+  if(!items.length||running||items.some(item=>!['image','text'].includes(item.kind)))return;
   referenceJobIds=items.map(item=>item.jobId);
   $('#reference-summary').textContent=`Using ${items.length} selected ${items.length===1?'result':'results'} as input`;
   $('#reference-summary').hidden=false;
@@ -746,14 +748,20 @@ $('#action-share').addEventListener('click',()=>shareGenerations([...selectedGen
 $('#share-close').addEventListener('click',()=>$('#selection-share-dialog').close());
 $('#share-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(shareItems.map(item=>item.prompt).join('\n\n'));toast('Prompt copied')}catch{toast('Could not copy the prompt')}});
 $('#share-download').addEventListener('click',()=>downloadGenerations(shareItems).catch(()=>toast('Could not download the selection. Try again.')));
-function undoGenerationDeletion(){
+async function undoGenerationDeletion(){
   if(!lastDeleted.length)return;
+  const entries=lastDeleted;
+  try{await api('/api/jobs/restore',{ids:entries.map(({item})=>item.jobId)})}catch(error){toast(error.message);return}
+  if(lastDeleted!==entries)return;
+  sessionRequest++;
   lastDeleted.forEach(({item,index})=>generationItems.splice(Math.min(index,generationItems.length),0,item));const restored=lastDeleted.map(entry=>entry.item);lastDeleted=[];
   layoutGenerationItems();refreshStacks();refreshGenerationView();selectGenerations(restored);requestCanvasFrame();$('#toast').classList.remove('visible');
 }
 $('#action-delete').addEventListener('click',()=>deleteGenerations([...selectedGenerations]));
-function deleteGenerations(items){
+async function deleteGenerations(items){
   if(!items.length)return;
+  try{await api('/api/jobs/delete',{ids:items.map(item=>item.jobId)})}catch(error){toast(error.message);return}
+  sessionRequest++;
   lastDeleted.forEach(({item})=>disposeGeneration(item));lastDeleted=[];
   if(currentGeneration&&items.includes(currentGeneration)){toast('Wait for this creation to finish.');return;}
   lastDeleted=items.filter(item=>generationItems.includes(item)).map(item=>({item,index:generationItems.indexOf(item)})).sort((a,b)=>a.index-b.index);
@@ -902,6 +910,8 @@ function openGenerationViewer(item){
   (item.references||[]).forEach(ref=>{const thumb=document.createElement('img');thumb.src=ref.url;thumb.alt=ref.name;assets.append(thumb)});
   $('#viewer-assets-section').hidden=!item.references?.length;
   $('#viewer-enhance').disabled=running;
+  $('#viewer-enhance').hidden=!['image','text'].includes(item.kind);
+  viewer.style.setProperty('--viewer-actions-width',$('#viewer-enhance').hidden?'285px':'398px');
   viewer.hidden=false;viewer.classList.remove('is-closing','is-visible');viewerLayout();
   const target=viewerShell.getBoundingClientRect(),center=canvasViewport.getBoundingClientRect();
   generationItems.forEach(other=>{
@@ -1167,9 +1177,9 @@ new MutationObserver(syncHomePreviewVideos).observe(workspace,{attributes:true,a
 new MutationObserver(syncHomePreviewVideos).observe(document.body,{attributes:true,attributeFilter:['class']});
 document.addEventListener('visibilitychange',syncHomePreviewVideos);homePreviewMotion.addEventListener('change',syncHomePreviewVideos);
 
-let sessionState=null,pendingPlan=null,referenceJobIds=[],clarificationPrompt='';
+let sessionState=null,pendingPlan=null,referenceJobIds=[],clarificationPrompt='',historyPages=1,sessionRequest=0;
 const requestMessage=$('#request-message'),planDialog=$('#plan-dialog');
-function showRequestMessage(text,retry=false){requestMessage.textContent=text;$('#processing-info').hidden=!text;dock.classList.toggle('has-status',!!text);$('#request-retry').hidden=!retry;$('#request-open').hidden=true;updatePrompt()}
+function showRequestMessage(text,retry=false){requestMessage.textContent=text;$('#processing-info').hidden=!text;dock.classList.toggle('has-status',!!text);$('#request-retry').hidden=!retry;$('#request-open').hidden=true;$('#request-credits').hidden=true;updatePrompt()}
 $('#request-open').addEventListener('click',()=>{
   const item=generationItems.filter(item=>item.status==='complete').sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0];
   if(!item){showRequestMessage('');return}
@@ -1198,12 +1208,24 @@ function showTrial(){
   const account=sessionState?.account,connected=Boolean(account?.connected);
   $('#trial-status').textContent=connected?(account.credits===null?'Magic Hour connected. Credit balance is temporarily unavailable.':`${account.credits.toLocaleString()} Magic Hour credits. Keep creating here.`):remaining?'Your first creation is included. No sign-up needed.':'Your included creation is used. Sign in to keep creating here.';
   $('#auth-title').textContent=connected?'Magic Hour connected':'Create your free account';
-  $('#auth-description').textContent=connected?'New media creations use your Magic Hour credits. Writing is included. Your results stay in this workspace.':'Create a free Magic Hour account and keep creating here. Your work stays in this workspace.';
+  $('#auth-description').textContent=connected?'Your creations are saved to this Magic Hour account. Sign in on another browser or device to find them here. New media uses your Magic Hour credits. Writing is included.':'Create a free Magic Hour account to keep creating here and save your creations across devices.';
+  $('#save-description').textContent=connected?'Saved to your account.':'Creations stay in this browser.';
+  $('#save-signin').textContent=connected?'View account':'Sign in to save across devices';$('#account-credits').hidden=!connected;
   $('#account-summary').hidden=!connected;$('#account-summary').textContent=connected?(account.email||'Your Magic Hour account'):'';
   $$('[data-auth-provider],#auth-terms').forEach(element=>element.hidden=connected);$('#auth-switch').hidden=!connected;$('#auth-disconnect').hidden=!connected;
   $$('.top-actions [data-auth-trigger],.mobile-signup').forEach(button=>button.hidden=connected);
   const trigger=$('.bottom-nav [data-auth-trigger]');trigger.querySelector('.nav-label').textContent=connected?'My account':'Sign Up / Log In';trigger.setAttribute('aria-label',connected?'My account':'Sign Up / Log In');trigger.dataset.tip=connected?'My account':'Sign Up / Log In';
+  syncPlanBalance();
 }
+function syncPlanBalance(){
+  const account=sessionState?.account,credits=account?.credits;
+  $('#plan-balance').hidden=!account?.connected;
+  $('#plan-balance').textContent=Number.isFinite(credits)?`${credits.toLocaleString()} credits available${account.email?` for ${account.email}`:''}.${credits<(pendingPlan?.estimatedCredits||0)?' Your balance is below the estimate.':''}`:'Credit balance is temporarily unavailable.';
+  $('#plan-credit-help').textContent=`Buy credits on Magic Hour${account?.email?` using ${account.email}`:''}, then return here. Your request stays here.`;
+  $('#plan-credits').hidden=!account?.connected||pendingPlan?.kind==='text';
+}
+$('#plan-refresh').addEventListener('click',async()=>{const button=$('#plan-refresh');button.disabled=true;await loadSession(true);button.disabled=false});
+$('#history-more').addEventListener('click',async()=>{historyPages++;$('#history-more').disabled=true;await loadSession(true);$('#history-more').disabled=false});
 $('#auth-disconnect').addEventListener('click',async()=>{try{await api('/api/auth/logout',{});location.reload()}catch(error){toast(error.message)}});
 window.addEventListener('focus',()=>{if(sessionState?.configured)loadSession()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&sessionState?.configured)loadSession()});
@@ -1240,6 +1262,7 @@ async function prepareCreation(event){
     if(!pendingPlan?.id)throw new Error('We could not prepare that request. Please try a simpler description.');
     $('#plan-summary').textContent=pendingPlan.summary;
     $('#plan-cost').textContent=pendingPlan.costLabel||'1 included trial creation';
+    syncPlanBalance();
     $('#plan-remaining').textContent=sessionState?.account?.connected?'Nothing is generated until you confirm. Media charges use your connected Magic Hour account; writing uses the app’s OpenAI service.':'Nothing is generated until you confirm. Failed creations do not use your trial.';
     showRequestMessage('');planDialog.showModal();$('#plan-confirm').focus();
   }catch(error){showRequestMessage(`${error.message} Your prompt and files are still here.`,![401,402,403,409].includes(error.status));if(error.status===401){await loadSession()}if([401,402,403].includes(error.status))openAuth(generate)}
@@ -1269,8 +1292,9 @@ async function displayJob(job,submitted=false){
   $('#workspace-name').textContent='Your creations';syncSessionFolder();
   applyJob(item,job);requestAnimationFrame(()=>revealGeneration(item,first));
   if(!['complete','error','canceled','submission_unknown'].includes(job.status)){
-    currentGeneration=item;workspace.classList.add('generating');dock.classList.add('processing');setGenerationLocked(true);pollJob(item);
-  }else{running=false;refreshGenerationView()}
+    workspace.classList.add('generating');dock.classList.add('processing');setGenerationLocked(true);
+    if(!currentGeneration){currentGeneration=item;pollJob(item)}
+  }else{running=Boolean(currentGeneration);refreshGenerationView()}
 }
 function applyJob(item,job){
   item.kind=job.kind;item.status=job.status==='complete'?'complete':['error','canceled','submission_unknown'].includes(job.status)?'error':'pending';
@@ -1296,28 +1320,42 @@ function applyJob(item,job){
     const retry=item.submitted&&['error','canceled'].includes(job.status);
     const message=typeof job.error==='string'?job.error:job.error?.message||'This creation failed. Your trial is still available.';
     showRequestMessage(message+(retry?' Your prompt and files are still here. Try again or change your request.':''),retry);
+    $('#request-credits').hidden=job.errorCode!=='insufficient_credits';
   }
   refreshGenerationView();syncGenerationCardActions();
 }
 async function pollJob(item){
   try{
     const {job}=await api(`/api/jobs/${encodeURIComponent(item.jobId)}`);applyJob(item,job);
-    if(['complete','error','canceled','submission_unknown'].includes(job.status)){
-      stopGeneration();await loadSession(true);
-      return;
-    }
-  }catch(error){showRequestMessage('We lost the connection. Your creation may still be running. We’ll check again.');}
-  timer=setTimeout(()=>pollJob(item),5000);
+  }catch(error){
+    if(error.status===404){
+      if(openedGeneration===item)await closeGenerationViewer(true);
+      disposeGeneration(item);item.element.remove();const index=generationItems.indexOf(item);if(index!==-1)generationItems.splice(index,1);selectedGenerations.delete(item);
+      layoutGenerationItems();refreshStacks();refreshGenerationView();showRequestMessage('This creation is no longer available in this workspace.');
+    }else if(error.status===401){await loadSession(true);openAuth(generate)}
+    else showRequestMessage('We lost the connection. Your creation may still be running. We’ll check again.');
+  }
+  const pending=generationItems.filter(other=>other.status==='pending');
+  if(!pending.length){stopGeneration();await loadSession(true);return}
+  currentGeneration=pending[(pending.indexOf(item)+1)%pending.length];
+  if(currentGeneration)timer=setTimeout(()=>pollJob(currentGeneration),5000);
 }
 async function loadSession(creationRefresh=false){
+  const request=++sessionRequest;
   try{
     const previousAccountId=sessionState?.account?.id;
-    sessionState=await api('/api/session');
+    const latest=await api('/api/session');if(request!==sessionRequest)return;
+    sessionState=latest;
     if(previousAccountId&&previousAccountId!==sessionState.account?.id){location.reload();return}
     if(sessionState.configured)showTrial();
-    if(!previousAccountId&&sessionState.account?.connected&&authDialog.open){await closeAuth();showRequestMessage('Magic Hour connected. Keep creating here.')}
-    const jobs=[...(sessionState.jobs||[])].sort((a,b)=>Number(!['complete','error','canceled','submission_unknown'].includes(a.status))-Number(!['complete','error','canceled','submission_unknown'].includes(b.status)));
-    for(const job of jobs)await displayJob(job);
+    if(!previousAccountId&&sessionState.account?.connected&&authDialog.open){await closeAuth();showRequestMessage('Signed in. Your creations are saved to your account.')}
+    let jobs=[...(sessionState.jobs||[])],hasMore=sessionState.hasMore;
+    for(let page=1;page<historyPages&&hasMore;page++){const next=await api(`/api/session?offset=${page*50}`);if(request!==sessionRequest)return;if(next.account?.id!==sessionState.account?.id){location.reload();return}jobs.push(...next.jobs);hasMore=next.hasMore}
+    $('#history-more').hidden=!hasMore;
+    for(const item of [...generationItems])if(item.jobId&&item.status!=='pending'&&!jobs.some(job=>job.id===item.jobId)){if(openedGeneration===item)await closeGenerationViewer(true);disposeGeneration(item);item.element.remove();generationItems.splice(generationItems.indexOf(item),1);selectedGenerations.delete(item)}
+    refreshGenerationView();
+    jobs.sort((a,b)=>Number(!['complete','error','canceled','submission_unknown'].includes(a.status))-Number(!['complete','error','canceled','submission_unknown'].includes(b.status)));
+    for(const job of jobs){if(request!==sessionRequest)return;await displayJob(job)}
     if(sessionState.configured===false)showRequestMessage('Create.here is getting ready. Generation will be available soon.');
   }catch(error){if(creationRefresh)toast('Could not refresh your account status. Your creation status is unchanged.');else showRequestMessage('Create.here is getting ready. Generation will be available soon.');}
 }

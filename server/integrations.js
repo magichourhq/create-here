@@ -17,7 +17,7 @@ export async function mcp(name, args = {}, token = process.env.MAGIC_HOUR_API_KE
     Authorization: `Bearer ${token}`, "Content-Type": "application/json",
     Accept: "application/json, text/event-stream", "MCP-Protocol-Version": "2025-03-26"
   }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }), signal: AbortSignal.timeout(22000) });
-  if (!response.ok) { const e = new HttpError(response.status === 401 && token !== process.env.MAGIC_HOUR_API_KEY ? 401 : 502, "Magic Hour could not accept this request."); e.upstreamStatus = response.status; throw e; }
+  if (!response.ok) { const e = new HttpError(response.status === 401 && token !== process.env.MAGIC_HOUR_API_KEY ? 401 : 502, "Magic Hour could not accept this request."); e.upstreamStatus = response.status; e.insufficientCredits = response.status === 402; throw e; }
   const raw = await response.text();
   let envelope;
   try { envelope = JSON.parse(raw); } catch {
@@ -29,8 +29,9 @@ export async function mcp(name, args = {}, token = process.env.MAGIC_HOUR_API_KE
     const e = new HttpError(502, "Magic Hour could not complete this request. Please check your inputs and account access.");
     const status = message.match(/\b(400|401|402|403|404|422|500|502|503)\b/);
     if (status) e.upstreamStatus = Number(status[1]);
+    e.insufficientCredits = e.upstreamStatus === 402 || /\binsufficient_credits\b/i.test(message);
     if (e.upstreamStatus === 401 && token !== process.env.MAGIC_HOUR_API_KEY) e.status = 401;
-    if (envelope?.error?.code === -32602 || /\b(400|401|402|403|404|422)\b|insufficient_credits|plan_upgrade_required|subscription_required|invalid_request|unprocessable_entity/.test(message)) e.definiteRejection = true;
+    if (e.insufficientCredits || envelope?.error?.code === -32602 || /\b(400|401|402|403|404|422)\b|insufficient_credits|plan_upgrade_required|subscription_required|invalid_request|unprocessable_entity/.test(message)) e.definiteRejection = true;
     throw e;
   }
   const result = envelope.result;
